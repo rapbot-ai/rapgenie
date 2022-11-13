@@ -58,7 +58,7 @@ app.post(`/infer`, async (req, res) => {
     const wavPath = `${outputDir}/${wavName}`
     console.log('wavPath:', wavPath)
     const wavContent = createReadStream(wavPath)
-    const uploadResponse = await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
+    await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
     const params = {
       Bucket: 'rapbot-rapgenie-outputs',
       Key: `${jobId}.wav`

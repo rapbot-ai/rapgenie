@@ -67,7 +67,7 @@ const execPythonComm = (args, opts = {}) => {
       if (!isWarning) {
         console.log('Rethrowing...')
         const rethrownError = new Error(error.toString())
-        throw rethrownError
+        return reject(rethrownError)
       }
     });
 
