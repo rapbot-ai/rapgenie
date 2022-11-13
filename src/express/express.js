@@ -34,9 +34,7 @@ app.post(`/infer`, async (req, res) => {
     }
 
     const textInputPath = `/home/ubuntu/1-radtts-repo/5-tts-input-text/${jobId}.txt`
-    console.log('textInputPath:', textInputPath)
     const outputDir = `/home/ubuntu/1-radtts-repo/6-training-output/${jobId}`
-    console.log('outputDir:', outputDir)
 
     const inferPath = `/home/ubuntu/1-radtts-repo/inference.py`
     const modelConfigPath = `-c /home/ubuntu/1-radtts-repo/2-configs/1-radtts-configs/config_ljs_dap.json`
@@ -61,7 +59,6 @@ app.post(`/infer`, async (req, res) => {
     console.log('wavPath:', wavPath)
     const wavContent = createReadStream(wavPath)
     const uploadResponse = await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
-    console.log('uploadResponse:', uploadResponse)
     const params = {
       Bucket: 'rapbot-rapgenie-outputs',
       Key: `${jobId}.wav`

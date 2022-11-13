@@ -158,7 +158,6 @@ tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6B")
 start_time = time.time()
 print('Loading GPT...')
 gpt = torch.load("/home/ubuntu/rapgenie/src/models/gpt-j-8bit_002500.pt",  map_location=torch.device('cuda'))
-# gpt = torch.load("/content/drive/MyDrive/limericks/gpt-j-6b_10-31-2022/models/gpt-j-8bit_002500.pt",  map_location=torch.device('cuda'))
 end_time = time.time()
 print('GPT loaded!')
 print('Load time (seconds):', round(end_time - start_time, 2))
@@ -244,7 +243,6 @@ first_lines.sort()
 
 print('first_lines:', first_lines)
 first_line = random.sample(first_lines, 1)[0]
-print('first_line:', first_line)
 
 # GET LINE 2:
 
@@ -283,20 +281,15 @@ second_lines.sort()
 
 second_line = random.sample(second_lines, 1)[0]
 
+print()
+print('first_line:', first_line)
 print("second_line:", second_line)
 
-print('sys.argv:', sys.argv)
 jobId = sys.argv[2]
 
-# outputPath = "/content/drive/MyDrive/limericks/gpt-j-6b_10-31-2022/{}.txt".format(jobId)
 outputPath = '/home/ubuntu/1-radtts-repo/5-tts-input-text/{}.txt'.format(jobId)
-print('outputPath:', outputPath)
 
 with open(outputPath, 'a') as file:
-  print('Writing to file...')
   file.write(first_line)
   file.write(' ')
   file.write(second_line)
-
-if __name__ == '__main__':
-  print(jobId)
