@@ -32,9 +32,13 @@ app.post(`/infer`, async (req, res) => {
       console.log('gptLogs:', gptLogs)
       const splitGptLogs = gptLogs.split(`\n`)
       console.log('splitGptLogs:', splitGptLogs)
-      jobId = splitGptLogs[splitGptLogs.length - 1]
+      jobId = splitGptLogs[splitGptLogs.length - 2]
     } else {
       throw new Error(`Must define either text or topic!`)
+    }
+
+    if (!jobId) {
+      throw new Error(`jobId is undefined!`)
     }
 
     console.log('jobId:', jobId)
