@@ -157,9 +157,8 @@ tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6B")
 
 start_time = time.time()
 print('Loading GPT...')
-# gpt = torch.load("/home/ubuntu/rapgenie/src/models/gpt-j-8bit_002500.pt",  map_location=torch.device('cuda'))
-gpt = torch.load("/content/drive/MyDrive/limericks/gpt-j-6b_10-31-2022/models/gpt-j-8bit_002500.pt",  map_location=torch.device('cuda'))
-
+gpt = torch.load("/home/ubuntu/rapgenie/src/models/gpt-j-8bit_002500.pt",  map_location=torch.device('cuda'))
+# gpt = torch.load("/content/drive/MyDrive/limericks/gpt-j-6b_10-31-2022/models/gpt-j-8bit_002500.pt",  map_location=torch.device('cuda'))
 end_time = time.time()
 print('GPT loaded!')
 print('Load time (seconds):', round(end_time - start_time, 2))
