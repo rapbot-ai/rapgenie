@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon ./src/express/express.js"
+    "dev": "nodemon ./src/express/express.js",
+    "pm2": "pm2 start ./src/express/express.js  --time --no-autorestart"
   },
   "author": "",
   "license": "ISC",
