@@ -19,8 +19,21 @@ app.get('/', async (req, res) => {
 
 app.post(`/infer`, async (req, res) => {
   try {
-    const { text } = req.body
-    const jobId = v4()
+    const { text, topic } = req.body
+    let jobId = ''
+
+    if (text) {
+      console.log("Text-based STT...")
+      jobId = v4()
+    } else if (!text && topic) {
+      console.log("Topic-based STT...")
+      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py '${topic}'`.split(' ')
+      const gptLogs = await execPythonComm(getCoupletsCommand, { printLogs: true })
+      jobId = gptLogs.split(`\n`).slice(-2, -1)[0]
+    } else {
+      throw new Error(`Must define either text or topic!`)
+    }
+
     console.log('jobId:', jobId)
     const textInputPath = `/home/ubuntu/1-radtts-repo/5-tts-input-text/${jobId}.txt`
     console.log('textInputPath:', textInputPath)
