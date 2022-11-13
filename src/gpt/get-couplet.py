@@ -289,9 +289,10 @@ print('sys.argv:', sys.argv)
 jobId = sys.argv[2]
 
 # outputPath = "/content/drive/MyDrive/limericks/gpt-j-6b_10-31-2022/{}.txt".format(jobId)
-outputPath = "/home/ubuntu/1-radtts-repo/5-tts-input-text/{}.txt".format(jobId)
+outputPath = '/home/ubuntu/1-radtts-repo/5-tts-input-text/{}.txt'.format(jobId)
+print('outputPath:', outputPath)
 
-with open(outputPath, 'a') as file:
+with open(outputPath, 'w') as file:
   file.write(first_line)
   file.write(' ')
   file.write(second_line)
