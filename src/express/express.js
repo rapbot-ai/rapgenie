@@ -27,7 +27,7 @@ app.post(`/infer`, async (req, res) => {
       console.log("Text-based STT...")
     } else if (!text && topic) {
       console.log("Topic-based STT...")
-      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py '${topic}' '${jobId}'`.split(' ')
+      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py ${topic} ${jobId}`.split(' ')
       await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else {
       throw new Error(`Must define either text or topic!`)
