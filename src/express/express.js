@@ -20,28 +20,19 @@ app.get('/', async (req, res) => {
 app.post(`/infer`, async (req, res) => {
   try {
     const { text, topic } = req.body
-    let jobId = ''
+    const jobId = v4()
+    console.log('jobId:', jobId)
 
     if (text) {
       console.log("Text-based STT...")
-      jobId = v4()
     } else if (!text && topic) {
       console.log("Topic-based STT...")
-      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py '${topic}'`.split(' ')
-      const gptLogs = await execPythonComm(getCoupletsCommand, { printLogs: true })
-      console.log('gptLogs:', gptLogs)
-      const splitGptLogs = gptLogs.split(`\n`)
-      console.log('splitGptLogs:', splitGptLogs)
-      jobId = splitGptLogs[splitGptLogs.length - 2]
+      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py '${topic}' '${jobId}'`.split(' ')
+      await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else {
       throw new Error(`Must define either text or topic!`)
     }
 
-    if (!jobId) {
-      throw new Error(`jobId is undefined!`)
-    }
-
-    console.log('jobId:', jobId)
     const textInputPath = `/home/ubuntu/1-radtts-repo/5-tts-input-text/${jobId}.txt`
     console.log('textInputPath:', textInputPath)
     const outputDir = `/home/ubuntu/1-radtts-repo/6-training-output/${jobId}`

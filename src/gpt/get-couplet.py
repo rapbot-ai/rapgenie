@@ -285,7 +285,8 @@ second_line = random.sample(second_lines, 1)[0]
 
 print("second_line:", second_line)
 
-jobId = str(uuid.uuid4())
+print('sys.argv:', sys.argv)
+jobId = sys.argv[2]
 
 # outputPath = "/content/drive/MyDrive/limericks/gpt-j-6b_10-31-2022/{}.txt".format(jobId)
 outputPath = "/home/ubuntu/1-radtts-repo/5-tts-input-text/{}.txt".format(jobId)
