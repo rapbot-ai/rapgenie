@@ -292,7 +292,7 @@ jobId = sys.argv[2]
 outputPath = '/home/ubuntu/1-radtts-repo/5-tts-input-text/{}.txt'.format(jobId)
 print('outputPath:', outputPath)
 
-with open(outputPath, 'w') as file:
+with open(outputPath, 'a') as file:
   print('Writing to file...')
   file.write(first_line)
   file.write(' ')

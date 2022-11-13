@@ -51,7 +51,7 @@ app.post(`/infer`, async (req, res) => {
     const radttsInferCommand = `${inferPath} ${modelConfigPath} ${modelPath} ${vocoderPath} ${vocoderConfigPath} ${textInput} ${speaker} ${speakerAttributes} ${speakerText} ${outputDirArg}`.split(' ')
     console.log('radttsInferCommand:', radttsInferCommand)
 
-    writeFileSync(textInputPath, text)
+    text && writeFileSync(textInputPath, text)
     mkdirSync(outputDir)
 
     await execPythonComm(radttsInferCommand, { printLogs: true })
