@@ -19,18 +19,20 @@ app.get('/', async (req, res) => {
 
 app.post(`/infer`, async (req, res) => {
   try {
-    const { text, topic } = req.body
+    const { textOrTopic, inferenceType } = req.body
     const jobId = v4()
     console.log('jobId:', jobId)
 
-    if (text) {
+    if (inferenceType === 'text' && textOrTopic) {
       console.log("Text-based STT...")
-    } else if (!text && topic) {
+    } else if (inferenceType === 'topic' && textOrTopic) {
       console.log("Topic-based STT...")
-      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py ${topic} ${jobId}`.split(' ')
+      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py ${textOrTopic} ${jobId}`.split(' ')
       await execPythonComm(getCoupletsCommand, { printLogs: true })
-    } else {
-      throw new Error(`Must define either text or topic!`)
+    } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
+      throw new Error(`inferenceType must be 'topic' or 'text'`)
+    } else if (!textOrTopic) {
+      throw new Error(`'textOrTopic' must be defined!`)
     }
 
     const textInputPath = `/home/ubuntu/1-radtts-repo/5-tts-input-text/${jobId}.txt`
@@ -49,7 +51,7 @@ app.post(`/infer`, async (req, res) => {
     const radttsInferCommand = `${inferPath} ${modelConfigPath} ${modelPath} ${vocoderPath} ${vocoderConfigPath} ${textInput} ${speaker} ${speakerAttributes} ${speakerText} ${outputDirArg}`.split(' ')
     console.log('radttsInferCommand:', radttsInferCommand)
 
-    text && writeFileSync(textInputPath, text)
+    inferenceType === 'text' && writeFileSync(textInputPath, textOrTopic)
     mkdirSync(outputDir)
 
     await execPythonComm(radttsInferCommand, { printLogs: true })
