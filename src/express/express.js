@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const CORS = require('cors');
 const { v4 } = require('uuid')
 const { writeFileSync, rmSync, mkdirSync, existsSync, createReadStream } = require('fs')
-const { uploadToS3 } = require('../aws/aws')
+const { uploadToS3, s3Client } = require('../aws/aws')
 const { execPythonComm } = require('../bash/bash')
 const { rmDirsRecursively } = require('../util/util')
 
