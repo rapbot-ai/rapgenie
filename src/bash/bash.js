@@ -43,7 +43,7 @@ const execComm = (comm, opts = {}, logFileName) => {
 const execPythonComm = (args, opts = {}) => {
   const { printLogs } = opts
   return new Promise((resolve, reject) => {
-    const terminal = spawn('/bin/usr/python3', args)
+    const terminal = spawn('/usr/bin/python3', args)
 
     // eslint-disable-next-line no-unused-vars
     // ALWAYS MUST BE LEFT ON, OR ELSE PROCESS WON'T EXECUTE FOR SOME REASON:
