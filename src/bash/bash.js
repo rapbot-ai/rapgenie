@@ -61,9 +61,14 @@ const execPythonComm = (args, opts = {}) => {
     });
 
     terminal.stderr.on('data', (error) => {
-      console.log(`STDERR > error: ${error}`);
-      console.log(`STDERR > error.toString(): ${error && error.toString()}`);
-      // return reject(error)
+      console.log('STDERR > error:', error.toString())
+      const isWarning = error.toString().includes('UserWarning')
+      console.log('isWarning:', isWarning)
+      if (!isWarning) {
+        console.log('Rethrowing...')
+        const rethrownError = new Error(error.toString())
+        throw rethrownError
+      }
     });
 
     terminal.stdin.write('', async (err) => {
