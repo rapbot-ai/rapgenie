@@ -1,10 +1,8 @@
-# RAPGENIE
+RapGenie: An end-to-end solution for synthesizing rap songs. Includes TTS voice generation and GPT lyrics generation.
 
-An end-to-end solution for synthesizing rap songs. Includes TTS voice generation and GPT lyrics generation.
+# VOICE GENERATION:
 
-## VOICE GENERATION:
-
-### RADTTS:
+## RADTTS:
 
 python3 \
 /home/ubuntu/1-radtts-repo/inference.py \
@@ -19,3 +17,9 @@ python3 \
 -o /home/ubuntu/1-radtts-repo/6-training-output
 
 ## GPT GENERATION:
+
+# COMMON COMMANDS:
+
+## COPY FROM AWS EC2:
+
+scp -i ~/rapbot-gpu-1.pem ubuntu@3.80.180.112:/home/ubuntu/1-radtts-repo/6-training-output/0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav ./
