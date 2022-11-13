@@ -29,7 +29,10 @@ app.post(`/infer`, async (req, res) => {
       console.log("Topic-based STT...")
       const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py '${topic}'`.split(' ')
       const gptLogs = await execPythonComm(getCoupletsCommand, { printLogs: true })
-      jobId = gptLogs.split(`\n`).slice(-2, -1)[0]
+      console.log('gptLogs:', gptLogs)
+      const splitGptLogs = gptLogs.split(`\n`)
+      console.log('splitGptLogs:', splitGptLogs)
+      jobId = splitGptLogs[splitGptLogs.length - 1]
     } else {
       throw new Error(`Must define either text or topic!`)
     }
