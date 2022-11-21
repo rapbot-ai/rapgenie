@@ -77,6 +77,18 @@ app.post(`/infer`, async (req, res) => {
   }
 })
 
+app.post(`/typecast-callback`, async (req, res) => {
+  try {
+    const { body } = req
+    console.log('body:', body)
+    return res.send(body)
+  } catch (error) {
+    console.log('error:', error)
+    const stringifiedError = JSON.stringify(error, Object.getOwnPropertyNames(error))
+    res.status(500).send(stringifiedError)
+  }
+})
+
 app.listen(3020, async () => {
   try {
     console.log('listening on 3020')
