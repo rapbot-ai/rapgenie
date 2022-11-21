@@ -285,9 +285,7 @@ print()
 print('first_line:', first_line)
 print("second_line:", second_line)
 
-jobId = sys.argv[2]
-
-outputPath = '/home/ubuntu/1-radtts-repo/5-tts-input-text/{}.txt'.format(jobId)
+outputPath = sys.argv[2]
 
 with open(outputPath, 'a') as file:
   file.write(first_line)
