@@ -1,6 +1,6 @@
 {
   "train_config": {
-    "output_directory": "/home/ubuntu/1-radtts-repo/6-training-output",
+    "output_directory": "",
     "epochs": 1000,
     "optim_algo": "RAdam",
     "learning_rate": 0.0005,
@@ -14,8 +14,8 @@
     "ignore_layers_warmstart": [],
     "finetune_layers": [],
     "include_layers": [],
-    "vocoder_config_path": "/home/ubuntu/1-radtts-repo/2-configs/2-hifigan-configs/hifigan_22khz_config.json",
-    "vocoder_checkpoint_path": "/home/ubuntu/1-radtts-repo/1-models/2-hifigan-models/hifigan_libritts100360_generator0p5.pt",
+    "vocoder_config_path": "/home/ubuntu/models/hifigan_22khz_config.json",
+    "vocoder_checkpoint_path": "/home/ubuntu/models/hifigan_libritts100360_generator0p5.pt",
     "log_attribute_samples": true,
     "log_decoder_samples": true,
     "warmstart_checkpoint_path": "",
@@ -37,7 +37,7 @@
   "data_config": {
     "training_files": {
       "LJS": {
-        "basedir": "/home/ubuntu/1-radtts-repo/4-training-input/8-formatted-lupe-lines-second-pass-22khz-mono-465",
+        "basedir": "/home/ubuntu/tts-datasets/8-formatted-lupe-lines-second-pass-22khz-mono-465",
         "audiodir": "wavs",
         "filelist": "training.txt",
         "lmdbpath": ""
@@ -45,7 +45,7 @@
     },
     "validation_files": {
       "LJS": {
-        "basedir": "/home/ubuntu/1-radtts-repo/4-training-input/8-formatted-lupe-lines-second-pass-22khz-mono-465",
+        "basedir": "/home/ubuntu/tts-datasets/8-formatted-lupe-lines-second-pass-22khz-mono-465",
         "audiodir": "wavs",
         "filelist": "validation.txt",
         "lmdbpath": ""
@@ -71,8 +71,8 @@
     "cleaner_names": [
       "radtts_cleaners"
     ],
-    "heteronyms_path": "/home/ubuntu/1-radtts-repo/tts_text_processing/heteronyms",
-    "phoneme_dict_path": "/home/ubuntu/1-radtts-repo/tts_text_processing/cmudict-0.7b",
+    "heteronyms_path": "/home/ubuntu/radtts/tts_text_processing/heteronyms",
+    "phoneme_dict_path": "/home/ubuntu/radtts/tts_text_processing/cmudict-0.7b",
     "p_phoneme": 1.0,
     "handle_phoneme": "word",
     "handle_phoneme_ambiguous": "ignore",

@@ -41,7 +41,7 @@ app.post(`/infer`, async (req, res) => {
     }
 
     const inferFunc = `/home/ubuntu/radtts/inference.py`
-    const radttsModelConfig = `/home/ubuntu/models/config_ljs_dap.json`
+    const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
     const radttsModel = `/home/ubuntu/models/lupe-fiasco-radtts-model`
     const vocoder = `/home/ubuntu/models/hifigan_libritts100360_generator0p5.pt`
     const vocoderConfig = `/home/ubuntu/models/hifigan_22khz_config.json`
@@ -70,8 +70,6 @@ app.post(`/infer`, async (req, res) => {
       jobDir,
     ]
     console.log('radttsInferCommand:', radttsInferCommand.join(`\n`))
-
-    !existsSync(jobDir) && mkdirSync(jobDir)
 
     await execPythonComm(radttsInferCommand, { printLogs: true })
 
@@ -110,6 +108,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     const jobId = v4()
     const jobDir = `/home/ubuntu/jobs/${jobId}`
     mkdirSync(jobDir)
+    mkdirSync(`${jobDir}/wavs`)
     const gptLyricsFile = `${jobDir}/text-input.txt`
 
     if (inferenceType === 'text' && inferenceBody) {
@@ -126,8 +125,6 @@ app.post(`/infer-typecast`, async (req, res) => {
       throw new Error(`'inferenceBody' must be defined!`)
     }
 
-    !existsSync(`${jobDir}/wavs`) && mkdirSync(`${jobDir}/wavs`)
-
     const text = inferenceType === 'text' ?
       inferenceBody :
       readFileSync(gptLyricsFile, 'utf-8')
@@ -140,11 +137,9 @@ app.post(`/infer-typecast`, async (req, res) => {
       tempo,
       style_label
     }
-    console.log('body:', body)
     const headers = {
       Authorization: `Bearer ${process.env.TYPECAST_TOKEN}`
     }
-    console.log('headers:', headers)
     const { data: { result: { speak_url } } } = await axios.post(`https://typecast.ai/api/speak`, body, { headers })
     console.log('speak_url:', speak_url)
 
@@ -198,7 +193,7 @@ app.post(`/infer-typecast`, async (req, res) => {
 
     const conversionFunc = `/home/ubuntu/radtts/inference_voice_conversion.py`
     const radttsModel = `/home/ubuntu/models/lupe-fiasco-radtts-model`
-    const radttsModelConfig = `/home/ubuntu/models/config_ljs_dap.json`
+    const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
     const vocoder = `/home/ubuntu/models/hifigan_libritts100360_generator0p5.pt`
     const vocoderConfig = `/home/ubuntu/models/hifigan_22khz_config.json`
     const dataConfigParams = `data_config.validation_files="{'Dummy': {'basedir': '${jobDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}"`
