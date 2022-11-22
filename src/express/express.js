@@ -178,7 +178,7 @@ app.post(`/infer-typecast`, async (req, res) => {
       });
     })
 
-    const validationString = `${typecastWav}|${text.replace(`\n`, ' ')}|lupefiasco`
+    const validationString = `${typecastWav}|${text.replace(`\n`, ' ')}.|lupefiasco`
     writeFileSync(`${radttsOutputDir}/validation.txt`, validationString)
 
     const conversionFunc = `/home/ubuntu/1-radtts-repo/inference_voice_conversion.py`
