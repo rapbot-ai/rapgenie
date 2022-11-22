@@ -115,7 +115,7 @@ app.post(`/infer-typecast`, async (req, res) => {
 
     const dollarJrActorId = '61b007392f2010f2aa1a052a'
     const tempo = 0.5
-    const style_label = 'tonedown-1'
+    const style_label = 'toneup-1'
     const lang = 'en'
     const max_seconds = 20
     const text = inferenceType === 'text' ?
