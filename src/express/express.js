@@ -101,7 +101,7 @@ app.post(`/infer-typecast`, async (req, res) => {
       inferenceBody,
       inferenceType,
       tempo = 1,
-      style_label = 'normal-1',
+      style_label = 'toneup-1',
       actor_id = '61b007392f2010f2aa1a052a',
       max_seconds = 20,
       lang = 'en'
@@ -236,7 +236,8 @@ app.post(`/infer-typecast`, async (req, res) => {
 
     return res.send({ wavSignedUrl })
   } catch (error) {
-    console.log('error:', error.response.data.message)
+    console.log('error:', error)
+    error && error.response && error.response.data && error.response.data.message && console.log('error:', error.response.data.message)
     const stringifiedError = JSON.stringify(error, Object.getOwnPropertyNames(error))
     console.log('stringifiedError:', stringifiedError)
     res.status(500).send(stringifiedError)
