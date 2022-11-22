@@ -164,7 +164,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     const typecastWav = `1.wav`
     const typecastOutput = `${radttsOutputDir}/wavs/${typecastWav}`
     const writer = createWriteStream(typecastOutput);
-    const streamResponse = await axios.get(audioFileUrl, { ...headers, responseType: 'stream' });
+    const streamResponse = await axios.get(audioFileUrl, { headers, responseType: 'stream' });
     streamResponse.data.pipe(writer);
 
     await new Promise((resolve, reject) => {
