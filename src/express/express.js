@@ -41,7 +41,7 @@ app.post(`/infer`, async (req, res) => {
     }
 
     const inferFunc = `../radtts/inference.py`
-    const radttsModelConfig = `../configs/config_ljs_dap.json`
+    const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
     const radttsModel = `../models/lupe-fiasco-radtts-model`
     const vocoder = `../models/hifigan_libritts100360_generator0p5.pt`
     const vocoderConfig = `../models/hifigan_22khz_config.json`
@@ -193,7 +193,7 @@ app.post(`/infer-typecast`, async (req, res) => {
 
     const conversionFunc = `../radtts/inference_voice_conversion.py`
     const radttsModel = `../models/lupe-fiasco-radtts-model`
-    const radttsModelConfig = `../configs/config_ljs_dap.json`
+    const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
     const vocoder = `../models/hifigan_libritts100360_generator0p5.pt`
     const vocoderConfig = `../models/hifigan_22khz_config.json`
     const dataConfigParams = `data_config.validation_files="{'Dummy': {'basedir': '${jobDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}"`
