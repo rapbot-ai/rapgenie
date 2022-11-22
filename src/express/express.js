@@ -32,7 +32,7 @@ app.post(`/infer`, async (req, res) => {
       writeFileSync(radttsTextInput, inferenceBody)
     } else if (inferenceType === 'topic' && inferenceBody) {
       console.log("Topic-based STT...")
-      const getCoupletsCommand = `../gpt/get-couplet.py ${inferenceBody} ${radttsTextInput}`.split(' ')
+      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py ${inferenceBody} ${radttsTextInput}`.split(' ')
       await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
       throw new Error(`inferenceType must be 'topic' or 'text'`)
@@ -116,7 +116,7 @@ app.post(`/infer-typecast`, async (req, res) => {
       writeFileSync(gptLyricsFile, inferenceBody)
     } else if (inferenceType === 'topic' && inferenceBody) {
       console.log("Topic-based STT...")
-      const getCoupletsFunc = `../gpt/get-couplet.py`
+      const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
       const getCoupletsCommand = [getCoupletsFunc, inferenceBody, gptLyricsFile]
       await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
