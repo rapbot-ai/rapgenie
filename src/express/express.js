@@ -69,7 +69,7 @@ app.post(`/infer`, async (req, res) => {
       `-o`,
       jobDir,
     ]
-    console.log('radttsInferCommand:', radttsInferCommand.join(`\n`))
+    console.log('radttsInferCommand:', radttsInferCommand.join(` \\\n`))
 
     await execPythonComm(radttsInferCommand, { printLogs: true })
 
