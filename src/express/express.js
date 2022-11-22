@@ -236,7 +236,7 @@ app.post(`/infer-typecast`, async (req, res) => {
 
     return res.send({ wavSignedUrl })
   } catch (error) {
-    console.log('error:', error)
+    console.log('error:', error.response.data.message)
     const stringifiedError = JSON.stringify(error, Object.getOwnPropertyNames(error))
     console.log('stringifiedError:', stringifiedError)
     res.status(500).send(stringifiedError)
