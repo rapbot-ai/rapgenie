@@ -182,24 +182,31 @@ app.post(`/infer-typecast`, async (req, res) => {
     writeFileSync(`${radttsOutputDir}/validation.txt`, validationString)
 
     const conversionFunc = `/home/ubuntu/1-radtts-repo/inference_voice_conversion.py`
-    const radttsModelConfig = `-c /home/ubuntu/1-radtts-repo/2-configs/1-radtts-configs/config_ljs_dap.json`
-    const radttsModel = `-r /home/ubuntu/1-radtts-repo/1-models/1-radtts-models/lupe-fiasco-radtts-model`
-    const vocoder = `-v /home/ubuntu/1-radtts-repo/1-models/2-hifigan-models/hifigan_libritts100360_generator0p5.pt`
-    const vocoderConfig = `-k /home/ubuntu/1-radtts-repo/2-configs/2-hifigan-configs/hifigan_22khz_config.json`
+    const radttsModel = `/home/ubuntu/1-radtts-repo/1-models/1-radtts-models/lupe-fiasco-radtts-model`
+    const radttsModelConfig = `/home/ubuntu/1-radtts-repo/2-configs/1-radtts-configs/config_ljs_dap.json`
+    const vocoder = `/home/ubuntu/1-radtts-repo/1-models/2-hifigan-models/hifigan_libritts100360_generator0p5.pt`
+    const vocoderConfig = `/home/ubuntu/1-radtts-repo/2-configs/2-hifigan-configs/hifigan_22khz_config.json`
+    const radttsOutputDirArg = `${radttsOutputDir}`
     const validationParams = `"{'Dummy': {'basedir': '${radttsOutputDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}"`
-    const validationParamsArg = `-p data_config.validation_files=${validationParams}`
-    const radttsOutputDirArg = `-o ${radttsOutputDir}`
+    const validationParamsArg = `data_config.validation_files=${validationParams}`
     const radttsVoiceTransferCommand = [
       conversionFunc,
+      `-r`,
       radttsModel,
+      `-c`,
       radttsModelConfig,
+      `-v`,
       vocoder,
+      `-k`,
       vocoderConfig,
+      `-o`,
       radttsOutputDirArg,
+      `-p`,
       validationParamsArg
     ]
-    console.log('radttsVoiceTransferCommand:', radttsVoiceTransferCommand)
+    console.log('radttsVoiceTransferCommand:', radttsVoiceTransferCommand.join(' '))
     await execPythonComm(radttsVoiceTransferCommand, { printLogs: true })
+    console.log('Voice transfer done!')
 
     const voiceTransferOutput = `1_0_sid0_sigma0.8.wav`
     const wavContent = createReadStream(`${radttsOutputDir}/${voiceTransferOutput}`)
