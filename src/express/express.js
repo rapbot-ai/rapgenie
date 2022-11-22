@@ -140,9 +140,11 @@ app.post(`/infer-typecast`, async (req, res) => {
       tempo,
       style_label
     }
+    console.log('body:', body)
     const headers = {
       Authorization: `Bearer ${process.env.TYPECAST_TOKEN}`
     }
+    console.log('headers:', headers)
     const { data: { result: { speak_url } } } = await axios.post(`https://typecast.ai/api/speak`, body, { headers })
     console.log('speak_url:', speak_url)
 
