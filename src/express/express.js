@@ -134,9 +134,10 @@ app.post(`/infer-typecast`, async (req, res) => {
       Authorization: `Bearer ${process.env.TYPECAST_TOKEN}`
     }
     const { data: { result: { speak_url } } } = await axios.post(`https://typecast.ai/api/speak`, body, { headers })
+    console.log('speak_url:', speak_url)
 
     const pollForTypecastJob = async (speak_url) => {
-      const { data: { result: { status, audio } } } = await axios.get(speak_url)
+      const { data: { result: { status, audio } } } = await axios.get(speak_url, { headers })
 
       if (status === 'done') {
         const { url } = audio
@@ -156,25 +157,28 @@ app.post(`/infer-typecast`, async (req, res) => {
       }
     }
 
+    console.log("Starting polling...")
     const audioFileUrl = await pollForTypecastJob(speak_url)
+    console.log('audioFileUrl:', audioFileUrl)
 
-    const typecastOutput = `${radttsOutputDir}/wavs/1.wav`
+    const typecastWav = `1.wav`
+    const typecastOutput = `${radttsOutputDir}/wavs/${typecastWav}`
     const writer = createWriteStream(typecastOutput);
     const streamResponse = await axios.get(audioFileUrl, { responseType: 'stream' });
     streamResponse.data.pipe(writer);
 
     await new Promise((resolve, reject) => {
       writer.on('finish', () => {
-        console.log("Finished")
+        console.log("typecast wav downloaded")
         return resolve()
       });
       writer.on('error', (error) => {
-        console.error("Error while downloading wav:", error)
+        console.error("Error while downloading typecast wav:", error)
         return reject(error)
       });
     })
 
-    const validationString = `1.wav|${text.replace(`\n`, ' ')}|lupefiasco`
+    const validationString = `${typecastWav}|${text.replace(`\n`, ' ')}|lupefiasco`
     writeFileSync(`${radttsOutputDir}/validation.txt`, validationString)
 
     const conversionFunc = `/home/ubuntu/1-radtts-repo/inference_voice_conversion.py`
