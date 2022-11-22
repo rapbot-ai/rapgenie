@@ -98,4 +98,8 @@ Request:
 Response:
 
 ```
+{
+    "wavSignedUrl": "https://rapbot-rapgenie-outputs.s3.amazonaws.com/d9203cb4-7f38-41cb-8d47-f0530fe8bd92.wav?AWSAccessKeyId=AKIAIFUTGW2VXZPECBPA&Expires=1669161516&Signature=ugnUR4AId%2FtghXTjbKVrmPH87Oc%3D",
+    "text": "yo what is up"
+}
 ```
