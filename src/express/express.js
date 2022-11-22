@@ -23,9 +23,9 @@ app.post(`/infer`, async (req, res) => {
     const { inferenceBody, inferenceType } = req.body
     const jobId = v4()
     console.log('jobId:', jobId)
-    const outputDir = `/home/ubuntu/jobs/${jobId}`
-    mkdirSync(outputDir)
-    const radttsTextInput = `${outputDir}/text-input.txt`
+    const jobDir = `/home/ubuntu/jobs/${jobId}`
+    mkdirSync(jobDir)
+    const radttsTextInput = `${jobDir}/text-input.txt`
 
     if (inferenceType === 'text' && inferenceBody) {
       console.log("Text-based STT...")
@@ -67,17 +67,17 @@ app.post(`/infer`, async (req, res) => {
       `--speaker_text`,
       speakerText,
       `-o`,
-      outputDir,
+      jobDir,
     ]
     console.log('radttsInferCommand:', radttsInferCommand.join(`\n`))
 
-    !existsSync(outputDir) && mkdirSync(outputDir)
+    !existsSync(jobDir) && mkdirSync(jobDir)
 
     await execPythonComm(radttsInferCommand, { printLogs: true })
 
     const inferOutput = `0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav`
-    console.log('wavPath:', `${outputDir}/${inferOutput}`)
-    const wavContent = createReadStream(`${outputDir}/${inferOutput}`)
+    console.log('wavPath:', `${jobDir}/${inferOutput}`)
+    const wavContent = createReadStream(`${jobDir}/${inferOutput}`)
     await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
     const params = {
       Bucket: 'rapbot-rapgenie-outputs',
@@ -86,7 +86,7 @@ app.post(`/infer`, async (req, res) => {
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
     rmSync(radttsTextInput)
-    rmSync(outputDir, { recursive: true, force: true });
+    rmSync(jobDir, { recursive: true, force: true });
     return res.send({ wavSignedUrl })
   } catch (error) {
     console.log('error:', error)
@@ -108,9 +108,9 @@ app.post(`/infer-typecast`, async (req, res) => {
     } = req.body
 
     const jobId = v4()
-    const outputDir = `/home/ubuntu/jobs/${jobId}`
-    mkdirSync(outputDir)
-    const gptLyricsFile = `${outputDir}/text-input.txt`
+    const jobDir = `/home/ubuntu/jobs/${jobId}`
+    mkdirSync(jobDir)
+    const gptLyricsFile = `${jobDir}/text-input.txt`
 
     if (inferenceType === 'text' && inferenceBody) {
       console.log("Text-based STT...")
@@ -126,7 +126,7 @@ app.post(`/infer-typecast`, async (req, res) => {
       throw new Error(`'inferenceBody' must be defined!`)
     }
 
-    !existsSync(`${outputDir}/wavs`) && mkdirSync(`${outputDir}/wavs`)
+    !existsSync(`${jobDir}/wavs`) && mkdirSync(`${jobDir}/wavs`)
 
     const text = inferenceType === 'text' ?
       inferenceBody :
@@ -174,7 +174,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     console.log('audioFileUrl:', audioFileUrl)
 
     const typecastWavStereo = `typecast-output-stereo-16-khz.wav`
-    const writer = createWriteStream(`${outputDir}/wavs/${typecastWavStereo}`);
+    const writer = createWriteStream(`${jobDir}/wavs/${typecastWavStereo}`);
     const streamResponse = await axios.get(audioFileUrl, { headers, responseType: 'stream' });
     streamResponse.data.pipe(writer);
 
@@ -190,19 +190,18 @@ app.post(`/infer-typecast`, async (req, res) => {
     })
 
     const typecastWavMono = `typecast-output-mono-22-khz.wav`
-    const convertToMonoAnd225KhzComm = `ffmpeg -i ${outputDir}/wavs/${typecastWavStereo} -ar 22050 -ac 1 ${outputDir}/wavs/${typecastWavMono}`
+    const convertToMonoAnd225KhzComm = `ffmpeg -i ${jobDir}/wavs/${typecastWavStereo} -ar 22050 -ac 1 ${jobDir}/wavs/${typecastWavMono}`
     await execComm(convertToMonoAnd225KhzComm)
 
     const validationString = `${typecastWavMono}|${text.replace(`\n`, ' ')}.|lupefiasco`
-    writeFileSync(`${outputDir}/validation.txt`, validationString)
+    writeFileSync(`${jobDir}/validation.txt`, validationString)
 
     const conversionFunc = `/home/ubuntu/radtts/inference_voice_conversion.py`
     const radttsModel = `/home/ubuntu/models/lupe-fiasco-radtts-model`
     const radttsModelConfig = `/home/ubuntu/models/config_ljs_dap.json`
     const vocoder = `/home/ubuntu/models/hifigan_libritts100360_generator0p5.pt`
     const vocoderConfig = `/home/ubuntu/models/hifigan_22khz_config.json`
-    const validationParams = `"{'Dummy': {'basedir': '${outputDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}"`
-    const validationParamsArg = `data_config.validation_files=${validationParams}`
+    const dataConfigParams = `data_config.validation_files="{'Dummy': {'basedir': '${jobDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}"`
     const radttsVoiceTransferCommand = [
       conversionFunc,
       `-r`,
@@ -214,16 +213,16 @@ app.post(`/infer-typecast`, async (req, res) => {
       `-k`,
       vocoderConfig,
       `-o`,
-      outputDir,
+      jobDir,
       `-p`,
-      validationParamsArg
+      dataConfigParams
     ]
     console.log('radttsVoiceTransferCommand:', radttsVoiceTransferCommand.join(' \\\n'))
     await execPythonComm(radttsVoiceTransferCommand, { printLogs: true })
     console.log('Voice transfer done!')
 
-    const voiceTransferOutput = `2_0_sid0_sigma0.8.wav`
-    const wavContent = createReadStream(`${outputDir}/${voiceTransferOutput}`)
+    const voiceTransferOutput = `typecast-output-mono-22-khz_0_sid0_sigma0.8.wav`
+    const wavContent = createReadStream(`${jobDir}/${voiceTransferOutput}`)
     await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
     const params = {
       Bucket: 'rapbot-rapgenie-outputs',
@@ -232,7 +231,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
     rmSync(gptLyricsFile)
-    rmSync(outputDir, { recursive: true, force: true });
+    rmSync(jobDir, { recursive: true, force: true });
 
     return res.send({ wavSignedUrl })
   } catch (error) {
