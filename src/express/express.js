@@ -23,7 +23,7 @@ app.post(`/infer`, async (req, res) => {
     const { inferenceBody, inferenceType } = req.body
     const jobId = v4()
     console.log('jobId:', jobId)
-    const jobDir = `/home/ubuntu/jobs/${jobId}`
+    const jobDir = `../jobs/${jobId}`
     mkdirSync(jobDir)
     const radttsTextInput = `${jobDir}/text-input.txt`
 
@@ -32,7 +32,7 @@ app.post(`/infer`, async (req, res) => {
       writeFileSync(radttsTextInput, inferenceBody)
     } else if (inferenceType === 'topic' && inferenceBody) {
       console.log("Topic-based STT...")
-      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py ${inferenceBody} ${radttsTextInput}`.split(' ')
+      const getCoupletsCommand = `../gpt/get-couplet.py ${inferenceBody} ${radttsTextInput}`.split(' ')
       await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
       throw new Error(`inferenceType must be 'topic' or 'text'`)
@@ -40,11 +40,11 @@ app.post(`/infer`, async (req, res) => {
       throw new Error(`'inferenceBody' must be defined!`)
     }
 
-    const inferFunc = `/home/ubuntu/radtts/inference.py`
-    const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
-    const radttsModel = `/home/ubuntu/models/lupe-fiasco-radtts-model`
-    const vocoder = `/home/ubuntu/models/hifigan_libritts100360_generator0p5.pt`
-    const vocoderConfig = `/home/ubuntu/models/hifigan_22khz_config.json`
+    const inferFunc = `../radtts/inference.py`
+    const radttsModelConfig = `../configs/config_ljs_dap.json`
+    const radttsModel = `../models/lupe-fiasco-radtts-model`
+    const vocoder = `../models/hifigan_libritts100360_generator0p5.pt`
+    const vocoderConfig = `../models/hifigan_22khz_config.json`
     const speaker = `lupefiasco`
     const speakerAttributes = `lupefiasco`
     const speakerText = `lupefiasco`
@@ -106,7 +106,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     } = req.body
 
     const jobId = v4()
-    const jobDir = `/home/ubuntu/jobs/${jobId}`
+    const jobDir = `../jobs/${jobId}`
     mkdirSync(jobDir)
     mkdirSync(`${jobDir}/wavs`)
     const gptLyricsFile = `${jobDir}/text-input.txt`
@@ -116,7 +116,7 @@ app.post(`/infer-typecast`, async (req, res) => {
       writeFileSync(gptLyricsFile, inferenceBody)
     } else if (inferenceType === 'topic' && inferenceBody) {
       console.log("Topic-based STT...")
-      const getCoupletsFunc = `/home/ubuntu/radtts/src/gpt/get-couplet.py`
+      const getCoupletsFunc = `../radtts/src/gpt/get-couplet.py`
       const getCoupletsCommand = [getCoupletsFunc, inferenceBody, gptLyricsFile]
       await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
@@ -191,11 +191,11 @@ app.post(`/infer-typecast`, async (req, res) => {
     const validationString = `${typecastWavMono}|${text.replace(`\n`, ' ')}.|lupefiasco`
     writeFileSync(`${jobDir}/validation.txt`, validationString)
 
-    const conversionFunc = `/home/ubuntu/radtts/inference_voice_conversion.py`
-    const radttsModel = `/home/ubuntu/models/lupe-fiasco-radtts-model`
-    const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
-    const vocoder = `/home/ubuntu/models/hifigan_libritts100360_generator0p5.pt`
-    const vocoderConfig = `/home/ubuntu/models/hifigan_22khz_config.json`
+    const conversionFunc = `../radtts/inference_voice_conversion.py`
+    const radttsModel = `../models/lupe-fiasco-radtts-model`
+    const radttsModelConfig = `../configs/config_ljs_dap.json`
+    const vocoder = `../models/hifigan_libritts100360_generator0p5.pt`
+    const vocoderConfig = `../models/hifigan_22khz_config.json`
     const dataConfigParams = `data_config.validation_files="{'Dummy': {'basedir': '${jobDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}"`
     const radttsVoiceTransferCommand = [
       conversionFunc,
@@ -254,6 +254,7 @@ app.post(`/typecast-callback`, async (req, res) => {
 app.listen(3020, async () => {
   try {
     console.log('listening on 3020')
+    !existsSync(`../jobs`) && mkdirSync(`../jobs`)
   } catch (error) {
     console.error('app.listen error:', error)
     console.log(error)
