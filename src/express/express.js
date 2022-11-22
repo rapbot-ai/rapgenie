@@ -25,14 +25,15 @@ app.post(`/infer`, async (req, res) => {
     console.log('jobId:', jobId)
     const jobDir = `../jobs/${jobId}`
     mkdirSync(jobDir)
-    const radttsTextInput = `${jobDir}/text-input.txt`
+    const textInputFile = `${jobDir}/text-input.txt`
 
     if (inferenceType === 'text' && inferenceBody) {
       console.log("Text-based STT...")
-      writeFileSync(radttsTextInput, inferenceBody)
+      writeFileSync(textInputFile, inferenceBody)
     } else if (inferenceType === 'topic' && inferenceBody) {
       console.log("Topic-based STT...")
-      const getCoupletsCommand = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py ${inferenceBody} ${radttsTextInput}`.split(' ')
+      const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
+      const getCoupletsCommand = [getCoupletsFunc, inferenceBody, textInputFile]
       await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
       throw new Error(`inferenceType must be 'topic' or 'text'`)
@@ -59,7 +60,7 @@ app.post(`/infer`, async (req, res) => {
       `-k`,
       vocoderConfig,
       `-t`,
-      radttsTextInput,
+      textInputFile,
       `-s`,
       speaker,
       `--speaker_attributes`,
@@ -83,7 +84,7 @@ app.post(`/infer`, async (req, res) => {
     }
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
-    rmSync(radttsTextInput)
+    rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
     return res.send({ wavSignedUrl })
   } catch (error) {
@@ -109,15 +110,15 @@ app.post(`/infer-typecast`, async (req, res) => {
     const jobDir = `../jobs/${jobId}`
     mkdirSync(jobDir)
     mkdirSync(`${jobDir}/wavs`)
-    const gptLyricsFile = `${jobDir}/text-input.txt`
+    const textInputFile = `${jobDir}/text-input.txt`
 
     if (inferenceType === 'text' && inferenceBody) {
       console.log("Text-based STT...")
-      writeFileSync(gptLyricsFile, inferenceBody)
+      writeFileSync(textInputFile, inferenceBody)
     } else if (inferenceType === 'topic' && inferenceBody) {
       console.log("Topic-based STT...")
       const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
-      const getCoupletsCommand = [getCoupletsFunc, inferenceBody, gptLyricsFile]
+      const getCoupletsCommand = [getCoupletsFunc, inferenceBody, textInputFile]
       await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
       throw new Error(`inferenceType must be 'topic' or 'text'`)
@@ -127,7 +128,7 @@ app.post(`/infer-typecast`, async (req, res) => {
 
     const text = inferenceType === 'text' ?
       inferenceBody :
-      readFileSync(gptLyricsFile, 'utf-8')
+      readFileSync(textInputFile, 'utf-8')
 
     const body = {
       text,
@@ -225,7 +226,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     }
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
-    rmSync(gptLyricsFile)
+    rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
 
     return res.send({ wavSignedUrl })
@@ -237,7 +238,6 @@ app.post(`/infer-typecast`, async (req, res) => {
     res.status(500).send(stringifiedError)
   }
 })
-
 
 app.post(`/typecast-callback`, async (req, res) => {
   try {
