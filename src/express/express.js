@@ -116,7 +116,7 @@ app.post(`/infer-typecast`, async (req, res) => {
       writeFileSync(gptLyricsFile, inferenceBody)
     } else if (inferenceType === 'topic' && inferenceBody) {
       console.log("Topic-based STT...")
-      const getCoupletsFunc = `../radtts/src/gpt/get-couplet.py`
+      const getCoupletsFunc = `../gpt/get-couplet.py`
       const getCoupletsCommand = [getCoupletsFunc, inferenceBody, gptLyricsFile]
       await execPythonComm(getCoupletsCommand, { printLogs: true })
     } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
