@@ -213,7 +213,8 @@ app.post(`/infer-typecast`, async (req, res) => {
     await execPythonComm(radttsVoiceTransferCommand, { printLogs: true })
     console.log('Voice transfer done!')
 
-    const voiceTransferOutput = `1_0_sid0_sigma0.8.wav`
+    // Change this code to use fs.readdir and find the file ending in .wav
+    const voiceTransferOutput = `2_0_sid0_sigma0.8.wav`
     const wavContent = createReadStream(`${radttsOutputDir}/${voiceTransferOutput}`)
     await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
     const params = {
