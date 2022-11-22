@@ -86,7 +86,8 @@ app.post(`/infer`, async (req, res) => {
 
     rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
-    return res.send({ wavSignedUrl })
+    const text = inferenceType === 'text' ? inferenceBody : readFileSync(textInputFile, 'utf-8')
+    return res.send({ wavSignedUrl, text })
   } catch (error) {
     console.log('error:', error)
     const stringifiedError = JSON.stringify(error, Object.getOwnPropertyNames(error))
@@ -229,7 +230,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
 
-    return res.send({ wavSignedUrl })
+    return res.send({ wavSignedUrl, text })
   } catch (error) {
     console.log('error:', error)
     error && error.response && error.response.data && error.response.data.message && console.log('error:', error.response.data.message)
