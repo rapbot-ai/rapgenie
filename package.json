@@ -8,7 +8,7 @@
     "dev": "nodemon ./src/express/express.js",
     "pm2": "pm2 start ./src/express/express.js  --time --no-autorestart",
     "ngrok": "ngrok http 3020",
-    "restart": "pm2 kill && npm run pm2 && pm2 logs"
+    "restart": "git pull origin feat/use-typecast && pm2 kill && npm run pm2 && pm2 logs"
   },
   "author": "",
   "license": "ISC",
