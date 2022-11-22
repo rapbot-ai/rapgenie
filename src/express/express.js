@@ -50,9 +50,9 @@ app.post(`/infer`, async (req, res) => {
     const speakerText = `lupefiasco`
     const radttsInferCommand = [
       inferFunc,
-      `-c`,
+      `-r`,
       radttsModel,
-      `-k`,
+      `-c`,
       radttsModelConfig,
       `-v`,
       vocoder,
