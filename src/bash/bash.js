@@ -64,11 +64,12 @@ const execPythonComm = (args, opts = {}) => {
       console.log('STDERR > error:', error.toString())
       const isWarning = error.toString().includes('UserWarning')
       console.log('isWarning:', isWarning)
-      if (!isWarning) {
-        console.log('Rethrowing...')
-        const rethrownError = new Error(error.toString())
-        return reject(rethrownError)
-      }
+      // TODO: actually rethrow errors, i.e.:
+      // if (!isWarning) {
+      // console.log('Rethrowing...')
+      // const rethrownError = new Error(error.toString())
+      // return reject(rethrownError)
+      // }
     });
 
     terminal.stdin.write('', async (err) => {
