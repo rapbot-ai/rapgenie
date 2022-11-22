@@ -238,6 +238,7 @@ app.post(`/infer-typecast`, async (req, res) => {
   } catch (error) {
     console.log('error:', error)
     const stringifiedError = JSON.stringify(error, Object.getOwnPropertyNames(error))
+    console.log('stringifiedError:', stringifiedError)
     res.status(500).send(stringifiedError)
   }
 })
