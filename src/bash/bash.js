@@ -50,7 +50,7 @@ const execPythonComm = (args, opts = {}) => {
     terminal.stdout.on('data', (data) => {
       printLogs && console.log('$$$ data:', data.toString())
       console.log('resolve 1')
-      return resolve(data.toString())
+      // return resolve(data.toString())
     });
 
     terminal.on('exit', async (code) => {
