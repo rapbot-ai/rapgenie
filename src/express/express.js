@@ -195,8 +195,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     const vocoder = `/home/ubuntu/1-radtts-repo/1-models/2-hifigan-models/hifigan_libritts100360_generator0p5.pt`
     const vocoderConfig = `/home/ubuntu/1-radtts-repo/2-configs/2-hifigan-configs/hifigan_22khz_config.json`
     const radttsOutputDirArg = `${radttsOutputDir}`
-    const escapeSlashes = ``
-    const validationParams = `${escapeSlashes}"{'Dummy': {'basedir': '${radttsOutputDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}${escapeSlashes}"`
+    const validationParams = `"{'Dummy': {'basedir': '${radttsOutputDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}"`
     const validationParamsArg = `data_config.validation_files=${validationParams}`
     const radttsVoiceTransferCommand = [
       conversionFunc,
