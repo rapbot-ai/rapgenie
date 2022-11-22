@@ -7,7 +7,7 @@ const axios = require('axios')
 const { writeFileSync, rmSync, mkdirSync, existsSync, createReadStream, createWriteStream } = require('fs')
 
 const { uploadToS3, s3Client } = require('../aws/aws.js')
-const { execPythonComm } = require('../bash/bash.js')
+const { execPythonComm, execComm } = require('../bash/bash.js')
 
 const app = express()
 
@@ -161,9 +161,8 @@ app.post(`/infer-typecast`, async (req, res) => {
     const audioFileUrl = await pollForTypecastJob(speak_url)
     console.log('audioFileUrl:', audioFileUrl)
 
-    const typecastWav = `1.wav`
-    const typecastOutput = `${radttsOutputDir}/wavs/${typecastWav}`
-    const writer = createWriteStream(typecastOutput);
+    const typecastWavStereo = `1.wav`
+    const writer = createWriteStream(`${radttsOutputDir}/wavs/${typecastWavStereo}`);
     const streamResponse = await axios.get(audioFileUrl, { headers, responseType: 'stream' });
     streamResponse.data.pipe(writer);
 
@@ -178,7 +177,12 @@ app.post(`/infer-typecast`, async (req, res) => {
       });
     })
 
-    const validationString = `${typecastWav}|${text.replace(`\n`, ' ')}.|lupefiasco`
+    // TODO: convert to mono and 22.5 khz
+    const typecastWavMono = `2.wav`
+    const convertToMonoAnd225KhzComm = `ffmpeg -i ${radttsOutputDir}/wavs/${typecastWavStereo} -ar 22050 -ac 1 ${radttsOutputDir}/wavs/${typecastWavMono}`
+    await execComm(convertToMonoAnd225KhzComm)
+
+    const validationString = `${typecastWavMono}|${text.replace(`\n`, ' ')}.|lupefiasco`
     writeFileSync(`${radttsOutputDir}/validation.txt`, validationString)
 
     const conversionFunc = `/home/ubuntu/1-radtts-repo/inference_voice_conversion.py`
@@ -187,7 +191,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     const vocoder = `/home/ubuntu/1-radtts-repo/1-models/2-hifigan-models/hifigan_libritts100360_generator0p5.pt`
     const vocoderConfig = `/home/ubuntu/1-radtts-repo/2-configs/2-hifigan-configs/hifigan_22khz_config.json`
     const radttsOutputDirArg = `${radttsOutputDir}`
-    const escapeSlashes = `\\`
+    const escapeSlashes = ``
     const validationParams = `${escapeSlashes}"{'Dummy': {'basedir': '${radttsOutputDir}', 'audiodir':'wavs', 'filelist': 'validation.txt'}}${escapeSlashes}"`
     const validationParamsArg = `data_config.validation_files=${validationParams}`
     const radttsVoiceTransferCommand = [
