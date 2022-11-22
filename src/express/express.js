@@ -141,7 +141,7 @@ app.post(`/infer-typecast`, async (req, res) => {
 
       if (status === 'done') {
         const { url } = audio
-        return `${url}/no-redirect`
+        return url
       } else if (status !== 'done') {
         return new Promise((resolve, reject) => {
           return setTimeout(async () => {
