@@ -89,7 +89,16 @@ app.post(`/infer`, async (req, res) => {
 
 app.post(`/infer-typecast`, async (req, res) => {
   try {
-    const { inferenceBody, inferenceType } = req.body
+    const {
+      inferenceBody,
+      inferenceType,
+      tempo = 1,
+      style_label = 'normal-1',
+      actor_id = '61b007392f2010f2aa1a052a',
+      max_seconds = 20,
+      lang = 'en'
+    } = req.body
+
     const jobId = v4()
     console.log('jobId:', jobId)
     const gptLyricsFile = `/home/ubuntu/1-radtts-repo/5-tts-input-text/${jobId}.txt`
@@ -113,11 +122,6 @@ app.post(`/infer-typecast`, async (req, res) => {
     !existsSync(radttsOutputDir) && mkdirSync(radttsOutputDir)
     !existsSync(`${radttsOutputDir}/wavs`) && mkdirSync(`${radttsOutputDir}/wavs`)
 
-    const dollarJrActorId = '61b007392f2010f2aa1a052a'
-    const tempo = 0.5
-    const style_label = 'toneup-1'
-    const lang = 'en'
-    const max_seconds = 20
     const text = inferenceType === 'text' ?
       inferenceBody :
       readFileSync(gptLyricsFile, 'utf-8')
@@ -125,7 +129,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     const body = {
       text,
       lang,
-      actor_id: dollarJrActorId,
+      actor_id,
       max_seconds,
       tempo,
       style_label
