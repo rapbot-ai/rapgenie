@@ -49,6 +49,7 @@ const execPythonComm = (args, opts = {}) => {
     // ALWAYS MUST BE LEFT ON, OR ELSE PROCESS WON'T EXECUTE FOR SOME REASON:
     terminal.stdout.on('data', (data) => {
       printLogs && console.log('$$$ data:', data.toString())
+      console.log('resolve 1')
       return resolve(data.toString())
     });
 
@@ -56,15 +57,17 @@ const execPythonComm = (args, opts = {}) => {
       if (code) {
         return reject(new Error(`Failed running comm:\n${args}`))
       } else {
+        console.log('resolve 4')
         return resolve()
       }
     });
 
     terminal.stderr.on('data', (error) => {
       console.log('STDERR > error:', error.toString())
-      const isWarning = error.toString().includes('UserWarning')
-      console.log('isWarning:', isWarning)
+
       // TODO: actually rethrow errors, i.e.:
+      // const isWarning = error.toString().includes('UserWarning')
+      // console.log('isWarning:', isWarning)
       // if (!isWarning) {
       // console.log('Rethrowing...')
       // const rethrownError = new Error(error.toString())
@@ -74,8 +77,10 @@ const execPythonComm = (args, opts = {}) => {
 
     terminal.stdin.write('', async (err) => {
       if (err) {
+        console.log('resolve 2')
         return reject(new Error(`Error creating file 2\ncode: ${code} signal:${signal}`))
       } else {
+        console.log('resolve 3')
         terminal.stdin.end();
       }
     });
