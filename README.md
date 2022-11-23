@@ -1,9 +1,12 @@
 RapGenie: An end-to-end solution for synthesizing rap songs. Includes TTS voice generation and GPT lyrics generation.
 
-# VOICE GENERATION:
+# SYNTHESIZED RAP:
 
-## RADTTS:
+## VOICE:
 
+Inference:
+
+```
 python3 \
 /radtts/inference.py \
 -c /config_ljs_dap.json \
@@ -15,14 +18,28 @@ python3 \
 --speaker_attributes lupefiasco \
 --speaker_text lupefiasco \
 -o /home/ubuntu/1-radtts-repo/6-training-output
+```
 
-## GPT GENERATION:
+Voice Transfer:
+
+```
+/home/ubuntu/1-radtts-repo/inference_voice_conversion.py
+-r /home/ubuntu/1-radtts-repo/1-models/1-radtts-models/lupe-fiasco-radtts-model
+-c /home/ubuntu/1-radtts-repo/2-configs/1-radtts-configs/config_ljs_dap.json
+-v /home/ubuntu/1-radtts-repo/1-models/2-hifigan-models/hifigan_libritts100360_generator0p5.pt
+-k /home/ubuntu/1-radtts-repo/2-configs/2-hifigan-configs/hifigan_22khz_config.json
+-o /home/ubuntu/1-radtts-repo/6-training-output/f7bda518-b4f5-4c67-9a7d-9c79784ddec3
+-p data_config.validation_files="{'Dummy': {'basedir': '/home/ubuntu/jobs/f7bda518-b4f5-4c67-9a7d-9c79784ddec3', 'audiodir':'wavs', 'filelist': 'validation.txt'}}"'
+```
+
+## LYRICS:
 
 # COMMON COMMANDS:
 
-## COPY FROM AWS EC2:
+## COPY FILE FROM AWS EC2 TO LOCAL DISK:
 
-scp -i ~/rapbot-gpu-1.pem ubuntu@3.80.180.112:/home/ubuntu/1-radtts-repo/6-training-output/0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav ./
+scp \
+-i ~/rapbot-gpu-1.pem ubuntu@3.80.180.112:/home/ubuntu/1-radtts-repo/6-training-output/0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav ./
 
 # EXPECTED SERVER FILE TREE:
 

@@ -22,8 +22,7 @@ app.post(`/infer`, async (req, res) => {
   try {
     const { inferenceBody, inferenceType } = req.body
     const jobId = v4()
-    console.log('jobId:', jobId)
-    const jobDir = `../jobs/${jobId}`
+    const jobDir = `/home/ubuntu/jobs/${jobId}`
     mkdirSync(jobDir)
     const textInputFile = `${jobDir}/text-input.txt`
 
@@ -108,7 +107,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     } = req.body
 
     const jobId = v4()
-    const jobDir = `../jobs/${jobId}`
+    const jobDir = `/home/ubuntu/jobs/${jobId}`
     mkdirSync(jobDir)
     mkdirSync(`${jobDir}/wavs`)
     const textInputFile = `${jobDir}/text-input.txt`
