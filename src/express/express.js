@@ -83,9 +83,9 @@ app.post(`/infer`, async (req, res) => {
     }
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
+    const text = inferenceType === 'text' ? inferenceBody : readFileSync(textInputFile, 'utf-8')
     rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
-    const text = inferenceType === 'text' ? inferenceBody : readFileSync(textInputFile, 'utf-8')
     return res.send({ wavSignedUrl, text })
   } catch (error) {
     console.log('error:', error)
