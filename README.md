@@ -39,7 +39,7 @@ Voice Transfer:
 ## COPY FILE FROM AWS EC2 TO LOCAL DISK:
 
 scp \
--i ~/rapbot-gpu-1.pem ubuntu@3.80.180.112:/home/ubuntu/1-radtts-repo/6-training-output/0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav ./
+-i ~/rapbot-gpu-1.pem ubuntu@3.80.180.112:/home/ubuntu/jobs/244a13bd-42ec-4042-9ebc-da8c1f4f3458/wavs/typecast-output-mono-22-khz.wav ./
 
 # EXPECTED SERVER FILE TREE:
 
