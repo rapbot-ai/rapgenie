@@ -289,6 +289,7 @@ print("second_line:", second_line)
 outputPath = sys.argv[2]
 
 with open(outputPath, 'a') as file:
-  file.write(first_line)
-  file.write(' ')
-  file.write(second_line)
+  file.write('\n'.join(first_lines))
+  file.write('\n')
+  file.write('\n')
+  file.write('\n'.join(second_lines))

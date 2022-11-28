@@ -239,14 +239,33 @@ app.post(`/infer-typecast`, async (req, res) => {
   }
 })
 
-app.post(`/typecast-callback`, async (req, res) => {
+app.post('/gpt/lyrics', async (req, res) => {
   try {
-    const { body } = req
-    console.log('body:', body)
-    return res.send(body)
+    const {
+      topic,
+    } = req.body
+
+    if (!topic) {
+      throw new Error(`'topic' must be defined!`)
+    }
+
+    const jobId = v4()
+    const jobDir = `/home/ubuntu/jobs/${jobId}`
+    mkdirSync(jobDir)
+
+    const textInputFile = `${jobDir}/text-input.txt`
+    const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
+    const getCoupletsCommand = [getCoupletsFunc, topic, textInputFile]
+    await execPythonComm(getCoupletsCommand, { printLogs: true })
+
+    const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`)
+    rmSync(jobDir, { recursive: true, force: true });
+    return { firstLines, secondLines }
   } catch (error) {
     console.log('error:', error)
+    error && error.response && error.response.data && error.response.data.message && console.log('error:', error.response.data.message)
     const stringifiedError = JSON.stringify(error, Object.getOwnPropertyNames(error))
+    console.log('stringifiedError:', stringifiedError)
     res.status(500).send(stringifiedError)
   }
 })
