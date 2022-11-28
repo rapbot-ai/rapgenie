@@ -223,7 +223,7 @@ app.post(`/infer-typecast`, async (req, res) => {
 
 app.post('/gpt/lyrics', async (req, res) => {
   try {
-    const { topic, isGptAutomatic } = req.body
+    const { topic } = req.body
 
     if (!topic) {
       throw new Error(`'topic' must be defined!`)
@@ -237,13 +237,13 @@ app.post('/gpt/lyrics', async (req, res) => {
     const textInputFile = `${jobDir}/text-input.txt`
     const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
     const getCoupletsCommand = [getCoupletsFunc, topic, textInputFile]
-    console.log('About to executeGPT...')
+    console.log('About to execute GPT...')
     await execPythonComm(getCoupletsCommand, { printLogs: true })
     console.log('Done executing GPT')
-    const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`).map(el => el.split(`\n`))
+    const lineChoices = readFileSync(textInputFile, 'utf-8').split(`\n\n`).map(el => el.split(`\n`))
     rmSync(jobDir, { recursive: true, force: true });
     console.log('About to return')
-    return res.status(200).send({ firstLines, secondLines })
+    return res.status(200).send(lineChoices)
   } catch (error) {
     console.log('error:', error)
     error && error.response && error.response.data && error.response.data.message && console.log('error:', error.response.data.message)
