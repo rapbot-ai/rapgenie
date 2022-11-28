@@ -238,8 +238,14 @@ app.post('/gpt/lyrics', async (req, res) => {
     await execPythonComm(getCoupletsCommand, { printLogs: true })
     console.log('Done executing...')
 
+
     const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`)
+    console.log('firstLines:', firstLines)
+    console.log('secondLines:', secondLines)
+
     rmSync(jobDir, { recursive: true, force: true });
+    console.log('jobDir removed')
+
 
     return { firstLines, secondLines }
   } catch (error) {
