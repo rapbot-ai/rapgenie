@@ -237,9 +237,11 @@ app.post('/gpt/lyrics', async (req, res) => {
     console.log('About to execute...')
     await execPythonComm(getCoupletsCommand, { printLogs: true })
     console.log('Done executing...')
-    const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`).map(el => el.split(`\n`))
+    const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`)
     rmSync(jobDir, { recursive: true, force: true });
-    return res.status(200).send({ firstLines, secondLines })
+    console.log('firstLInes.split:', firstLines.split(`\n`))
+    console.log('secondLines.split:', secondLines.split(`\n`))
+    return res.status(200).send({ firstLines: firstLines.split(`\n`), secondLines: secondLines.split(`\n`) })
   } catch (error) {
     console.log('error:', error)
     error && error.response && error.response.data && error.response.data.message && console.log('error:', error.response.data.message)
