@@ -21,14 +21,15 @@ app.get('/', async (_, res) => {
 app.post(`/infer`, async (req, res) => {
   try {
     const { inferenceBody } = req.body
-    const jobId = v4()
-    const jobDir = `/home/ubuntu/jobs/${jobId}`
-    mkdirSync(jobDir)
-    const textInputFile = `${jobDir}/text-input.txt`
 
     if (!inferenceBody) {
       throw new Error(`'inferenceBody' must be defined!`)
     }
+
+    const jobId = v4()
+    const jobDir = `/home/ubuntu/jobs/${jobId}`
+    mkdirSync(jobDir)
+    const textInputFile = `${jobDir}/text-input.txt`
 
     const inferFunc = `../radtts/inference.py`
     const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
@@ -95,15 +96,15 @@ app.post(`/infer-typecast`, async (req, res) => {
       lang = 'en'
     } = req.body
 
+    if (!inferenceBody) {
+      throw new Error(`'inferenceBody' must be defined!`)
+    }
+
     const jobId = v4()
     const jobDir = `/home/ubuntu/jobs/${jobId}`
     mkdirSync(jobDir)
     mkdirSync(`${jobDir}/wavs`)
     const textInputFile = `${jobDir}/text-input.txt`
-
-    if (!inferenceBody) {
-      throw new Error(`'inferenceBody' must be defined!`)
-    }
 
     const text = inferenceBody
 
@@ -236,7 +237,7 @@ app.post('/gpt/lyrics', async (req, res) => {
     console.log('About to execute...')
     await execPythonComm(getCoupletsCommand, { printLogs: true })
     console.log('Done executing...')
-    const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`)
+    const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`).map(el => el.split(`\n`))
     rmSync(jobDir, { recursive: true, force: true });
     return res.status(200).send({ firstLines, secondLines })
   } catch (error) {
