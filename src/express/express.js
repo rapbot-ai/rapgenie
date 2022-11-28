@@ -31,6 +31,8 @@ app.post(`/infer`, async (req, res) => {
     mkdirSync(jobDir)
     const textInputFile = `${jobDir}/text-input.txt`
 
+    writeFileSync(textInputFile, inferenceBody)
+
     const inferFunc = `../radtts/inference.py`
     const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
     const radttsModel = `../models/lupe-fiasco-radtts-model`
@@ -105,6 +107,8 @@ app.post(`/infer-typecast`, async (req, res) => {
     mkdirSync(jobDir)
     mkdirSync(`${jobDir}/wavs`)
     const textInputFile = `${jobDir}/text-input.txt`
+
+    writeFileSync(textInputFile, inferenceBody)
 
     const text = inferenceBody
 
@@ -234,13 +238,9 @@ app.post('/gpt/lyrics', async (req, res) => {
     const textInputFile = `${jobDir}/text-input.txt`
     const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
     const getCoupletsCommand = [getCoupletsFunc, topic, textInputFile]
-    console.log('About to execute...')
     await execPythonComm(getCoupletsCommand, { printLogs: true })
-    console.log('Done executing...')
     const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`)
     rmSync(jobDir, { recursive: true, force: true });
-    console.log('firstLInes.split:', firstLines.split(`\n`))
-    console.log('secondLines.split:', secondLines.split(`\n`))
     return res.status(200).send({ firstLines: firstLines.split(`\n`), secondLines: secondLines.split(`\n`) })
   } catch (error) {
     console.log('error:', error)
