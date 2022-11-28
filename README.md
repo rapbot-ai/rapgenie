@@ -41,6 +41,8 @@ Voice Transfer:
 scp \
 -i ~/rapbot-gpu-1.pem ubuntu@3.80.180.112:/home/ubuntu/jobs/244a13bd-42ec-4042-9ebc-da8c1f4f3458/wavs/typecast-output-mono-22-khz.wav ./
 
+scp -i ./gpt-j-8bit_065000.pt ubuntu@3.80.180.112:/home/ubuntu/models/
+
 # EXPECTED SERVER FILE TREE:
 
 ~/jobs <-- create this manually

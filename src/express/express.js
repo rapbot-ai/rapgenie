@@ -20,23 +20,13 @@ app.get('/', async (_, res) => {
 
 app.post(`/infer`, async (req, res) => {
   try {
-    const { inferenceBody, inferenceType } = req.body
+    const { inferenceBody } = req.body
     const jobId = v4()
     const jobDir = `/home/ubuntu/jobs/${jobId}`
     mkdirSync(jobDir)
     const textInputFile = `${jobDir}/text-input.txt`
 
-    if (inferenceType === 'text' && inferenceBody) {
-      console.log("Text-based STT...")
-      writeFileSync(textInputFile, inferenceBody)
-    } else if (inferenceType === 'topic' && inferenceBody) {
-      console.log("Topic-based STT...")
-      const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
-      const getCoupletsCommand = [getCoupletsFunc, inferenceBody, textInputFile]
-      await execPythonComm(getCoupletsCommand, { printLogs: true })
-    } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
-      throw new Error(`inferenceType must be 'topic' or 'text'`)
-    } else if (!inferenceBody) {
+    if (!inferenceBody) {
       throw new Error(`'inferenceBody' must be defined!`)
     }
 
@@ -83,7 +73,7 @@ app.post(`/infer`, async (req, res) => {
     }
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
-    const text = inferenceType === 'text' ? inferenceBody : readFileSync(textInputFile, 'utf-8')
+    const text = inferenceBody
     rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
     return res.send({ wavSignedUrl, text })
@@ -98,7 +88,6 @@ app.post(`/infer-typecast`, async (req, res) => {
   try {
     const {
       inferenceBody,
-      inferenceType,
       tempo = 1,
       style_label = 'toneup-1',
       actor_id = '61b007392f2010f2aa1a052a',
@@ -112,23 +101,11 @@ app.post(`/infer-typecast`, async (req, res) => {
     mkdirSync(`${jobDir}/wavs`)
     const textInputFile = `${jobDir}/text-input.txt`
 
-    if (inferenceType === 'text' && inferenceBody) {
-      console.log("Text-based STT...")
-      writeFileSync(textInputFile, inferenceBody)
-    } else if (inferenceType === 'topic' && inferenceBody) {
-      console.log("Topic-based STT...")
-      const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
-      const getCoupletsCommand = [getCoupletsFunc, inferenceBody, textInputFile]
-      await execPythonComm(getCoupletsCommand, { printLogs: true })
-    } else if (inferenceType !== 'topic' || !inferenceType === 'text' || '') {
-      throw new Error(`inferenceType must be 'topic' or 'text'`)
-    } else if (!inferenceBody) {
+    if (!inferenceBody) {
       throw new Error(`'inferenceBody' must be defined!`)
     }
 
-    const text = inferenceType === 'text' ?
-      inferenceBody :
-      readFileSync(textInputFile, 'utf-8')
+    const text = inferenceBody
 
     const body = {
       text,
@@ -244,6 +221,7 @@ app.post('/gpt/lyrics', async (req, res) => {
     const {
       topic,
     } = req.body
+    console.log('Topic:', topic)
 
     if (!topic) {
       throw new Error(`'topic' must be defined!`)
@@ -256,10 +234,13 @@ app.post('/gpt/lyrics', async (req, res) => {
     const textInputFile = `${jobDir}/text-input.txt`
     const getCoupletsFunc = `/home/ubuntu/rapgenie/src/gpt/get-couplet.py`
     const getCoupletsCommand = [getCoupletsFunc, topic, textInputFile]
+    console.log('About to execute...')
     await execPythonComm(getCoupletsCommand, { printLogs: true })
+    console.log('Done executing...')
 
     const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`)
     rmSync(jobDir, { recursive: true, force: true });
+
     return { firstLines, secondLines }
   } catch (error) {
     console.log('error:', error)

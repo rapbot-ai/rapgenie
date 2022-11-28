@@ -287,9 +287,13 @@ print('first_line:', first_line)
 print("second_line:", second_line)
 
 outputPath = sys.argv[2]
+print('outputPath:', outputPath)
 
 with open(outputPath, 'a') as file:
+  print('inside')
   file.write('\n'.join(first_lines))
   file.write('\n')
   file.write('\n')
   file.write('\n'.join(second_lines))
+
+print('DONE!')
