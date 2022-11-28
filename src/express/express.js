@@ -221,7 +221,6 @@ app.post('/gpt/lyrics', async (req, res) => {
     const {
       topic,
     } = req.body
-    console.log('Topic:', topic)
 
     if (!topic) {
       throw new Error(`'topic' must be defined!`)
@@ -237,17 +236,9 @@ app.post('/gpt/lyrics', async (req, res) => {
     console.log('About to execute...')
     await execPythonComm(getCoupletsCommand, { printLogs: true })
     console.log('Done executing...')
-
-
     const [firstLines, secondLines] = readFileSync(textInputFile, 'utf-8').split(`\n\n`)
-    console.log('firstLines:', firstLines)
-    console.log('secondLines:', secondLines)
-
     rmSync(jobDir, { recursive: true, force: true });
-    console.log('jobDir removed')
-
-
-    return { firstLines, secondLines }
+    return res.status(200).send({ firstLines, secondLines })
   } catch (error) {
     console.log('error:', error)
     error && error.response && error.response.data && error.response.data.message && console.log('error:', error.response.data.message)
