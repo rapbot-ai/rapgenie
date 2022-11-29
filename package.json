@@ -6,12 +6,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon ./src/express/express.js",
-    "pm2": "pm2 start ./src/express/express.js  --time --no-autorestart"
+    "pm2": "pm2 start ./src/express/express.js  --time --no-autorestart",
+    "ngrok": "ngrok http 3020",
+    "restart": "git pull origin feat/use-typecast && pm2 kill && npm run pm2 && pm2 logs"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.1253.0",
+    "axios": "^1.1.3",
     "body-parser": "^1.20.1",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",

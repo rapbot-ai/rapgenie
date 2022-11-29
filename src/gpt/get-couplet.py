@@ -157,7 +157,8 @@ tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6B")
 
 start_time = time.time()
 print('Loading GPT...')
-gpt = torch.load("/home/ubuntu/rapgenie/src/models/gpt-j-8bit_002500.pt",  map_location=torch.device('cuda'))
+model_path = "/home/ubuntu/models/gpt-j-8bit_065000.pt"
+gpt = torch.load(model_path,  map_location=torch.device('cuda'))
 end_time = time.time()
 print('GPT loaded!')
 print('Load time (seconds):', round(end_time - start_time, 2))
@@ -285,11 +286,14 @@ print()
 print('first_line:', first_line)
 print("second_line:", second_line)
 
-jobId = sys.argv[2]
-
-outputPath = '/home/ubuntu/1-radtts-repo/5-tts-input-text/{}.txt'.format(jobId)
+outputPath = sys.argv[2]
+print('outputPath:', outputPath)
 
 with open(outputPath, 'a') as file:
-  file.write(first_line)
-  file.write(' ')
-  file.write(second_line)
+  print('inside')
+  file.write('\n'.join(first_lines))
+  file.write('\n')
+  file.write('\n')
+  file.write('\n'.join(second_lines))
+
+print('DONE!')

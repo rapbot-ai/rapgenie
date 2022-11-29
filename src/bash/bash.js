@@ -49,7 +49,6 @@ const execPythonComm = (args, opts = {}) => {
     // ALWAYS MUST BE LEFT ON, OR ELSE PROCESS WON'T EXECUTE FOR SOME REASON:
     terminal.stdout.on('data', (data) => {
       printLogs && console.log('$$$ data:', data.toString())
-      return resolve(data.toString())
     });
 
     terminal.on('exit', async (code) => {
@@ -62,13 +61,7 @@ const execPythonComm = (args, opts = {}) => {
 
     terminal.stderr.on('data', (error) => {
       console.log('STDERR > error:', error.toString())
-      const isWarning = error.toString().includes('UserWarning')
-      console.log('isWarning:', isWarning)
-      if (!isWarning) {
-        console.log('Rethrowing...')
-        const rethrownError = new Error(error.toString())
-        return reject(rethrownError)
-      }
+      // TODO: actually throw errs, while filtering out UserWarning's that RADTTS sends
     });
 
     terminal.stdin.write('', async (err) => {
