@@ -263,13 +263,13 @@ app.post('/gpt/lyrics', async (req, res) => {
 app.post('/openai', async (req, res) => {
   if (req.method === 'POST') {
     const {
-      query,
+      topic,
     } = req.body
 
     try {
       const { data: completions } = await openai.createCompletion({
         model: "text-davinci-003",
-        prompt: `Give me a stanza of rap about: ${query}`,
+        prompt: `Give me a stanza of rap about: ${topic}`,
         temperature: 1,
         n: 1,
         presence_penalty: 0,
