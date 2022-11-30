@@ -276,8 +276,9 @@ app.post('/openai', async (req, res) => {
         frequency_penalty: 0,
         max_tokens: 3700
       });
+      const { choices: [{ text }] } = completions
 
-      return res.status(200).send(completions)
+      return res.status(200).send(text.split(`\n`))
     } catch (error) {
       console.log('error:', error)
       logger.handleErr(error, req.query)
