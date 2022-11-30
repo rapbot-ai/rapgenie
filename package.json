@@ -8,7 +8,7 @@
     "dev": "nodemon ./src/express/express.js",
     "pm2": "pm2 start ./src/express/express.js  --time --no-autorestart",
     "ngrok": "ngrok http 3020",
-    "restart": "git pull origin feat/use-typecast && pm2 kill && npm run pm2 && pm2 logs"
+    "restart": "git pull origin feat/use-text-davinci-003-model && pm2 kill && npm run pm2 && pm2 logs"
   },
   "author": "",
   "license": "ISC",
@@ -19,6 +19,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "openai": "^3.1.0",
     "uuid": "^9.0.0"
   }
 }

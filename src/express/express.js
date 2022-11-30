@@ -5,9 +5,16 @@ const CORS = require('cors');
 const { v4 } = require('uuid')
 const axios = require('axios')
 const { writeFileSync, rmSync, mkdirSync, existsSync, createReadStream, createWriteStream, readFileSync } = require('fs')
+const { Configuration, OpenAIApi } = require("openai")
 
 const { uploadToS3, s3Client } = require('../aws/aws.js')
 const { execPythonComm, execComm } = require('../bash/bash.js')
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const openai = new OpenAIApi(configuration);
 
 const app = express()
 
@@ -250,6 +257,34 @@ app.post('/gpt/lyrics', async (req, res) => {
     const stringifiedError = JSON.stringify(error, Object.getOwnPropertyNames(error))
     console.log('stringifiedError:', stringifiedError)
     res.status(500).send(stringifiedError)
+  }
+})
+
+app.post('/openai', async (req, res) => {
+  if (req.method === 'POST') {
+    const {
+      topic,
+    } = req.body
+
+    try {
+      const { data: completions } = await openai.createCompletion({
+        model: "text-davinci-003",
+        prompt: `Give me a stanza of rap about: ${topic}`,
+        temperature: 1,
+        n: 1,
+        presence_penalty: 0,
+        frequency_penalty: 0,
+        max_tokens: 3700
+      });
+      const { choices: [{ text }] } = completions
+
+      return res.status(200).send(text.split(`\n`).map(el => [el]))
+    } catch (error) {
+      console.log('error:', error)
+      logger.handleErr(error, req.query)
+      const formattedError = JSON.parse(JSON.stringify(error, Object.getOwnPropertyNames(error)))
+      return res.status(error.statusCode || 500).send(formattedError)
+    }
   }
 })
 
