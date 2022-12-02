@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const CORS = require('cors');
 const { v4 } = require('uuid')
 const axios = require('axios')
-const { writeFileSync, rmSync, mkdirSync, existsSync, createReadStream, createWriteStream, readFileSync } = require('fs')
+const { writeFileSync, rmSync, mkdirSync, existsSync, createReadStream, createWriteStream, readFileSync, readdirSync } = require('fs')
 const { Configuration, OpenAIApi } = require("openai")
 
 const { uploadToS3, s3Client } = require('../aws/aws.js')
@@ -27,7 +27,7 @@ app.get('/', async (_, res) => {
 
 app.post(`/infer`, async (req, res) => {
   try {
-    const { inferenceBody } = req.body
+    const { inferenceBody, tempo = 1.5 } = req.body
 
     if (!inferenceBody) {
       throw new Error(`'inferenceBody' must be defined!`)
@@ -68,12 +68,14 @@ app.post(`/infer`, async (req, res) => {
       speakerText,
       `-o`,
       jobDir,
+      `--token_dur_scaling`,
+      tempo
     ]
     console.log('radttsInferCommand:', radttsInferCommand.join(` \\\n`))
 
     await execPythonComm(radttsInferCommand, { printLogs: true })
 
-    const inferOutput = `0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav`
+    const [inferOutput] = readdirSync(jobDir).filter(file => file.split('.').pop() === 'wav')
     console.log('wavPath:', `${jobDir}/${inferOutput}`)
     const wavContent = createReadStream(`${jobDir}/${inferOutput}`)
     await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
@@ -84,7 +86,6 @@ app.post(`/infer`, async (req, res) => {
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
     const text = inferenceBody
-    rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
     return res.send({ wavSignedUrl, text })
   } catch (error) {
@@ -113,6 +114,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     const jobDir = `/home/ubuntu/jobs/${jobId}`
     mkdirSync(jobDir)
     mkdirSync(`${jobDir}/wavs`)
+    mkdirSync(`${jobDir}/typecast`)
     const textInputFile = `${jobDir}/text-input.txt`
 
     writeFileSync(textInputFile, inferenceBody)
@@ -159,7 +161,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     console.log('audioFileUrl:', audioFileUrl)
 
     const typecastWavStereo = `typecast-output-stereo-16-khz.wav`
-    const writer = createWriteStream(`${jobDir}/wavs/${typecastWavStereo}`);
+    const writer = createWriteStream(`${jobDir}/typecast/${typecastWavStereo}`);
     const streamResponse = await axios.get(audioFileUrl, { headers, responseType: 'stream' });
     streamResponse.data.pipe(writer);
 
@@ -175,7 +177,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     })
 
     const typecastWavMono = `typecast-output-mono-22-khz.wav`
-    const convertToMonoAnd225KhzComm = `ffmpeg -i ${jobDir}/wavs/${typecastWavStereo} -ar 22050 -ac 1 ${jobDir}/wavs/${typecastWavMono}`
+    const convertToMonoAnd225KhzComm = `ffmpeg -i ${jobDir}/typecast/${typecastWavStereo} -ar 22050 -ac 1 ${jobDir}/wavs/${typecastWavMono}`
     await execComm(convertToMonoAnd225KhzComm)
 
     const validationString = `${typecastWavMono}|${text.replace(`\n`, ' ')}.|lupefiasco`
@@ -206,7 +208,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     await execPythonComm(radttsVoiceTransferCommand, { printLogs: true })
     console.log('Voice transfer done!')
 
-    const voiceTransferOutput = `typecast-output-mono-22-khz_0_sid0_sigma0.8.wav`
+    const voiceTransferOutput = readdirSync(jobDir).filter(file => file.split('.').pop() === 'wav')
     const wavContent = createReadStream(`${jobDir}/${voiceTransferOutput}`)
     await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
     const params = {
@@ -215,8 +217,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     }
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
-    rmSync(textInputFile)
-    rmSync(jobDir, { recursive: true, force: true });
+    // rmSync(jobDir, { recursive: true, force: true });
 
     return res.send({ wavSignedUrl, text })
   } catch (error) {
