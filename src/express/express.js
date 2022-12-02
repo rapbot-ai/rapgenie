@@ -27,7 +27,7 @@ app.get('/', async (_, res) => {
 
 app.post(`/infer`, async (req, res) => {
   try {
-    const { inferenceBody } = req.body
+    const { inferenceBody, tempo } = req.body
 
     if (!inferenceBody) {
       throw new Error(`'inferenceBody' must be defined!`)
@@ -68,6 +68,8 @@ app.post(`/infer`, async (req, res) => {
       speakerText,
       `-o`,
       jobDir,
+      `--token_dur_scaling`,
+      tempo
     ]
     console.log('radttsInferCommand:', radttsInferCommand.join(` \\\n`))
 
