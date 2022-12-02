@@ -69,7 +69,7 @@ app.post(`/infer`, async (req, res) => {
       `-o`,
       jobDir,
       `--token_dur_scaling`,
-      tempo
+      1.5
     ]
     console.log('radttsInferCommand:', radttsInferCommand.join(` \\\n`))
 
