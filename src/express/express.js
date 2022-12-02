@@ -114,6 +114,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     const jobDir = `/home/ubuntu/jobs/${jobId}`
     mkdirSync(jobDir)
     mkdirSync(`${jobDir}/wavs`)
+    mkdirSync(`${jobDir}/typecast`)
     const textInputFile = `${jobDir}/text-input.txt`
 
     writeFileSync(textInputFile, inferenceBody)
@@ -160,7 +161,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     console.log('audioFileUrl:', audioFileUrl)
 
     const typecastWavStereo = `typecast-output-stereo-16-khz.wav`
-    const writer = createWriteStream(`${jobDir}/wavs/${typecastWavStereo}`);
+    const writer = createWriteStream(`${jobDir}/typecast/${typecastWavStereo}`);
     const streamResponse = await axios.get(audioFileUrl, { headers, responseType: 'stream' });
     streamResponse.data.pipe(writer);
 
@@ -176,8 +177,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     })
 
     const typecastWavMono = `typecast-output-mono-22-khz.wav`
-    const convertToMonoAnd225KhzComm = `ffmpeg -i ${jobDir}/wavs/${typecastWavStereo} -ar 22050 -ac 1 ${jobDir}/wavs/${typecastWavMono}`
-    rmSync(`${jobDir}/wavs/${typecastWavStereo}`)
+    const convertToMonoAnd225KhzComm = `ffmpeg -i ${jobDir}/typecast/${typecastWavStereo} -ar 22050 -ac 1 ${jobDir}/wavs/${typecastWavMono}`
     await execComm(convertToMonoAnd225KhzComm)
 
     const validationString = `${typecastWavMono}|${text.replace(`\n`, ' ')}.|lupefiasco`
