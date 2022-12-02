@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const CORS = require('cors');
 const { v4 } = require('uuid')
 const axios = require('axios')
-const { writeFileSync, rmSync, mkdirSync, existsSync, createReadStream, createWriteStream, readFileSync } = require('fs')
+const { writeFileSync, rmSync, mkdirSync, existsSync, createReadStream, createWriteStream, readFileSync, readdirSync } = require('fs')
 const { Configuration, OpenAIApi } = require("openai")
 
 const { uploadToS3, s3Client } = require('../aws/aws.js')
@@ -75,7 +75,9 @@ app.post(`/infer`, async (req, res) => {
 
     await execPythonComm(radttsInferCommand, { printLogs: true })
 
-    const inferOutput = `0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav`
+    // const inferOutput = `0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav`
+    const [inferOutput] = readdirSync(jobDir).filter(file => file.split('.').pop() === 'wav')
+    console.log('inferOutput:', inferOutput)
     console.log('wavPath:', `${jobDir}/${inferOutput}`)
     const wavContent = createReadStream(`${jobDir}/${inferOutput}`)
     await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
@@ -86,7 +88,6 @@ app.post(`/infer`, async (req, res) => {
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
     const text = inferenceBody
-    rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
     return res.send({ wavSignedUrl, text })
   } catch (error) {
