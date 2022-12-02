@@ -27,7 +27,7 @@ app.get('/', async (_, res) => {
 
 app.post(`/infer`, async (req, res) => {
   try {
-    const { inferenceBody, tempo } = req.body
+    const { inferenceBody, tempo = 1.5 } = req.body
 
     if (!inferenceBody) {
       throw new Error(`'inferenceBody' must be defined!`)
@@ -75,9 +75,7 @@ app.post(`/infer`, async (req, res) => {
 
     await execPythonComm(radttsInferCommand, { printLogs: true })
 
-    // const inferOutput = `0_0_lupefiasco_durscaling1.0_sigma0.8_sigmatext0.666_sigmaf01.0_sigmaenergy1.0_denoised_0.0.wav`
     const [inferOutput] = readdirSync(jobDir).filter(file => file.split('.').pop() === 'wav')
-    console.log('inferOutput:', inferOutput)
     console.log('wavPath:', `${jobDir}/${inferOutput}`)
     const wavContent = createReadStream(`${jobDir}/${inferOutput}`)
     await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
@@ -209,7 +207,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     await execPythonComm(radttsVoiceTransferCommand, { printLogs: true })
     console.log('Voice transfer done!')
 
-    const voiceTransferOutput = `typecast-output-mono-22-khz_0_sid0_sigma0.8.wav`
+    const voiceTransferOutput = readdirSync(jobDir).filter(file => file.split('.').pop() === 'wav')
     const wavContent = createReadStream(`${jobDir}/${voiceTransferOutput}`)
     await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
     const params = {
@@ -218,7 +216,6 @@ app.post(`/infer-typecast`, async (req, res) => {
     }
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
-    rmSync(textInputFile)
     rmSync(jobDir, { recursive: true, force: true });
 
     return res.send({ wavSignedUrl, text })
