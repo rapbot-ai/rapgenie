@@ -177,6 +177,7 @@ app.post(`/infer-typecast`, async (req, res) => {
 
     const typecastWavMono = `typecast-output-mono-22-khz.wav`
     const convertToMonoAnd225KhzComm = `ffmpeg -i ${jobDir}/wavs/${typecastWavStereo} -ar 22050 -ac 1 ${jobDir}/wavs/${typecastWavMono}`
+    rmSync(`${jobDir}/wavs/${typecastWavStereo}`)
     await execComm(convertToMonoAnd225KhzComm)
 
     const validationString = `${typecastWavMono}|${text.replace(`\n`, ' ')}.|lupefiasco`
