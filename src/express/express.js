@@ -216,7 +216,7 @@ app.post(`/infer-typecast`, async (req, res) => {
     }
     const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
 
-    rmSync(jobDir, { recursive: true, force: true });
+    // rmSync(jobDir, { recursive: true, force: true });
 
     return res.send({ wavSignedUrl, text })
   } catch (error) {
