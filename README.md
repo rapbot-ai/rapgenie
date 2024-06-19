@@ -175,14 +175,9 @@ mkdir /home/ubuntu/jobs
 
 5. Download the hifigan_libritts model, the lupe fiasco radtts model & model config, and the lupe fiasco training.txt file to your local machine from Google drive here:
 
-lupe fiasco + model config:
-https://drive.google.com/drive/folders/1j981XSwxFh_65s3JKVdEAFX3GL-vDnJ5
-
-hifigan_libritts:
-https://drive.google.com/file/d/1gbrmWexvW3fwEM0aDxxXC18A2f5DzuED/view?usp=drive_link
-
-lupe fiasco training.txt file:
-https://drive.google.com/drive/folders/1Yxj_ekL9Z_PZ7e0f9Qegq_RPUMVyoEGF?usp=drive_link
+- lupe fiasco + model config [here](https://drive.google.com/drive/folders/1j981XSwxFh_65s3JKVdEAFX3GL-vDnJ5)
+- hifigan_libritts [here](https://drive.google.com/file/d/1gbrmWexvW3fwEM0aDxxXC18A2f5DzuED/view?usp=drive_link)
+- lupe fiasco training.txt file [here](https://drive.google.com/drive/folders/1Yxj_ekL9Z_PZ7e0f9Qegq_RPUMVyoEGF?usp=drive_link)
 
 6. Upload those files to the EC2 instance:
 
@@ -193,9 +188,7 @@ scp -i ~/rapbot-gpu-4.pem ./hifigan_libritts100360_generator0p5.pt ubuntu@18.208
 scp -i ~/rapbot-gpu-4.pem ./8-formatted-lupe-lines-second-pass-22khz-mono-465/training.txt ubuntu@18.208.144.207:/home/ubuntu/tts-datasets/8-formatted-lupe-lines-second-pass-22khz-mono-465
 ```
 
-7. Install cuda toolkit using these directions. Input your instance config (Ubuntu, 20.04, Linux, etc.) to obtain the right installer:
-
-https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_network
+7. Install cuda toolkit using these directions. Input your instance config (Ubuntu, 20.04, Linux, etc.) to obtain the right installer [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_network).
 
 8. Make sure that the GPU is available on the instance:
 
@@ -204,6 +197,7 @@ python3
 import torch
 torch.cuda.is_available()
 ```
+
 If it's not, you probably installed CUDA or your nvidia drivers incorrectly.
 
 9. Run nvidia-smi to make sure your GPU is there:
@@ -214,9 +208,9 @@ nvidia-smi
 
 10. Clone the `rapgenie` and `radtts` repos to the instance:
 
-https://github.com/NVIDIA/radtts
+[radtts](https://github.com/NVIDIA/radtts)
 
-https://github.com/rapbot-ai/rapgenie
+[rapgenie](https://github.com/rapbot-ai/rapgenie)
 
 11. Install pip:
 
@@ -238,7 +232,9 @@ python3 -m pip install <MISSING-DEPENDENCY>
 
 13. Install nvm:
 
+```
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
+```
 
 14. Check nvm installation:
 
@@ -296,7 +292,7 @@ npm run dev
 curl --location 'http://IP_ADDRESS_HERE:3020/infer' \
 --header 'Content-Type: application/json' \
 --data '{
-    "inferenceBody": "hey"
+    "inferenceBody": "this is a test"
 }'
 ```
 
@@ -306,12 +302,13 @@ curl --location 'http://IP_ADDRESS_HERE:3020/infer' \
 python3 -m pip install <MISSING-DEPENDENCY>
 ```
 
-Numpy in particular can be tricky. v2.0.0 deprecated some methods we need. You might have to go in and manually fix the librosa packages use of numpy to make it work. This could perhaps be fixed by pinning the version of librosa in `radtts`, but I have not tried that. Off the top of my head:
+Numpy in particular can be tricky. v2.0.0 deprecated some methods we need. You might have to go in and manually fix the librosa packages use of numpy to make it work. This could perhaps be fixed by pinning the version of librosa in `radtts`, but I have not tried that. From what I can remember:
 
   a. Change `np.float` to `float` in `.../utils/utils.py`.
+
   b. Change `np.complex` to `np.complex128` (or `np.complex64`, whatever number it currently has).
 
-24. Install pm2 and then keep the process running in the background:
+24. Install pm2 and then start the process running in the background:
 
 ```
 npm install -g pm2
