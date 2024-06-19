@@ -197,7 +197,7 @@ scp -i ~/rapbot-gpu-4.pem ./8-formatted-lupe-lines-second-pass-22khz-mono-465/tr
 
 https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_network
 
-8. Make sure that the cuda is available on the instance:
+8. Make sure that the GPU is available on the instance:
 
 ```
 python3
@@ -215,6 +215,7 @@ nvidia-smi
 10. Clone the `rapgenie` and `radtts` repos to the instance:
 
 https://github.com/NVIDIA/radtts
+
 https://github.com/rapbot-ai/rapgenie
 
 11. Install pip:
