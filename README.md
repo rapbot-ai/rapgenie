@@ -36,29 +36,34 @@ Voice Transfer:
 
 # COMMON COMMANDS:
 
-## COPY FILE FROM AWS EC2 TO LOCAL DISK:
+## COPY FILE OR DIRECTORY TO/FROM AWS EC2 TO/FROM LOCAL DISK:
 
-scp \
--i ~/rapbot-gpu-1.pem ubuntu@3.80.180.112:/home/ubuntu/jobs/244a13bd-42ec-4042-9ebc-da8c1f4f3458/wavs/typecast-output-mono-22-khz.wav ./
+scp -i ~/<PEM-FILE-NAME>.pem <USER-NAME>@<IP-ADDRESS-HERE>:<SOURCE-FILE-PATH> <LOCAL-DESTINATION-FILE-PATH>
 
-scp -i ./gpt-j-8bit_065000.pt ubuntu@3.80.180.112:/home/ubuntu/models/
+*change -i to -r in the above command in order to copy folders*
+
+### Example:
+
+```
+scp -i ~/rapbot-gpu-4.pem ./hifigan_22khz_config.json ubuntu@18.208.144.207:/home/ubuntu/models
+```
+
+## 
 
 # EXPECTED SERVER FILE TREE:
 
-~/jobs <-- this should becreated automatically. If it's not, just make it yourself
+~/jobs <-- this should be created automatically. If it's not, just make it yourself.
 
-~/models <-- TODO: create script to download these items from my google drive using gdown
-- lupe-fiasco-radtts-model
-- gpt-j-8bit_couplets_generator.pt
-- hifigan_libritts100360_generator0p5.pt
-- hifigan_22khz_config.json
+~/models <-- where the lupe fiasco and hifigan libritts model actually lives
 
 ~/radtts <-- clone repo from github [here](https://github.com/NVIDIA/radtts)
 
 ~/rapgenie <-- clone repo from github [here](https://github.com/rapbot-ai/rapgenie)
 
 ~/tts-datasets <-- contains files used to train voice
-- 8-formatted-lupe-lines-second-pass-22khz-mono-465 (on my GDrive [here](https://drive.google.com/drive/folders/1Yxj_ekL9Z_PZ7e0f9Qegq_RPUMVyoEGF?usp=share_link))
+
+~/tts-datasets/8-formatted-lupe-lines-second-pass-22khz-mono-465 
+- get this on my GDrive [here](https://drive.google.com/drive/folders/1Yxj_ekL9Z_PZ7e0f9Qegq_RPUMVyoEGF?usp=share_link)
 -- training.txt
 -- validation.txt
 -- wavs
@@ -125,16 +130,18 @@ Response:
 
 ## INFERENCE COMMAND:
 
-python3 /home/ubuntu/radtts/inference.py \
+mkdir -p /home/ubuntu/test \
+&& echo "this is a test" >> /home/ubuntu/test/text-input.txt \
+&& python3 /home/ubuntu/radtts/inference.py \
 -r /home/ubuntu/models/lupe-fiasco-radtts-model \
 -c /home/ubuntu/rapgenie/src/configs/config_ljs_dap.json \
 -v /home/ubuntu/models/hifigan_libritts100360_generator0p5.pt \
 -k /home/ubuntu/models/hifigan_22khz_config.json \
--t /home/ubuntu/jobs/e81f53a9-8250-44a5-937a-27d326b596e6/text-input.txt \
+-t /home/ubuntu/test/text-input.txt \
 -s lupefiasco \
 --speaker_attributes lupefiasco \
 --speaker_text lupefiasco \
--o /home/ubuntu/jobs/e81f53a9-8250-44a5-937a-27d326b596e6 \
+-o /home/ubuntu/test \
 --token_dur_scaling 1.5
 
 # SETTING UP INFERENCE WITH A CUSTOM RADTTS MODEL:
@@ -163,9 +170,10 @@ ssh -i <PEM-NAME-HERE>4.pem ubuntu@<INSTANCE-IP-ADDRESS-HERE>
 ```
 mkdir /home/ubuntu/models
 mkdir /home/ubuntu/tts-datasets
+mkdir /home/ubuntu/jobs
 ```
 
-5. Download the hifigan_libritts model, the lupe fiasco radtts model & model config, and the lupe fiasco training data to your local machine from Google drive here:
+5. Download the hifigan_libritts model, the lupe fiasco radtts model & model config, and the lupe fiasco training.txt file to your local machine from Google drive here:
 
 lupe fiasco + model config:
 https://drive.google.com/drive/folders/1j981XSwxFh_65s3JKVdEAFX3GL-vDnJ5
@@ -173,15 +181,17 @@ https://drive.google.com/drive/folders/1j981XSwxFh_65s3JKVdEAFX3GL-vDnJ5
 hifigan_libritts:
 https://drive.google.com/file/d/1gbrmWexvW3fwEM0aDxxXC18A2f5DzuED/view?usp=drive_link
 
-lupe fiasco training data:
+lupe fiasco training.txt file:
 https://drive.google.com/drive/folders/1Yxj_ekL9Z_PZ7e0f9Qegq_RPUMVyoEGF?usp=drive_link
 
-6. Upload your model and model config using these commands:
+6. Upload those files to the EC2 instance:
 
+```
 scp -i ~/rapbot-gpu-4.pem ./hifigan_22khz_config.json ubuntu@18.208.144.207:/home/ubuntu/models
 scp -i ~/rapbot-gpu-4.pem ./lupe-fiasco-radtts-model ubuntu@18.208.144.207:/home/ubuntu/models
 scp -i ~/rapbot-gpu-4.pem ./hifigan_libritts100360_generator0p5.pt ubuntu@18.208.144.207:/home/ubuntu/models
 scp -i ~/rapbot-gpu-4.pem ./8-formatted-lupe-lines-second-pass-22khz-mono-465/training.txt ubuntu@18.208.144.207:/home/ubuntu/tts-datasets/8-formatted-lupe-lines-second-pass-22khz-mono-465
+```
 
 7. Install cuda toolkit using these directions. Input your instance config (Ubuntu, 20.04, Linux, etc.) to obtain the right installer:
 
@@ -306,3 +316,12 @@ Numpy in particular can be tricky. v2.0.0 deprecated some methods we need. You m
 npm install -g pm2
 npm run pm2
 ```
+
+## TODOs:
+
+1. create script to download these items from my google drive using gdown
+- lupe-fiasco-radtts-model
+- 8-formatted-lupe-lines-second-pass-22khz-mono-465/training.txt
+- gpt-j-8bit_couplets_generator.pt
+- hifigan_libritts100360_generator0p5.pt
+- hifigan_22khz_config.json
