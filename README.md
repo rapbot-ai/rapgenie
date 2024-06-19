@@ -130,6 +130,7 @@ Response:
 
 ## INFERENCE COMMAND:
 
+```
 mkdir -p /home/ubuntu/test \
 && echo "this is a test" >> /home/ubuntu/test/text-input.txt \
 && python3 /home/ubuntu/radtts/inference.py \
@@ -143,6 +144,7 @@ mkdir -p /home/ubuntu/test \
 --speaker_text lupefiasco \
 -o /home/ubuntu/test \
 --token_dur_scaling 1.5
+```
 
 # SETTING UP INFERENCE WITH A CUSTOM RADTTS MODEL:
 
