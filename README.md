@@ -277,12 +277,12 @@ yarn install
 npm install -g nodemon
 ```
 
-20. Add creds for AWS to upload the output .wav to S3:
+20. Populate .env so that the app can upload .wav outputs to S3:
 
 ```
 cd /home/ubuntu/rapgenie
+cp .env.example .env
 vi .env
-<COPY-CREDS-INTO-FILE-AND-SAVE>
 ```
 
 21. Start the rapgenie server:
