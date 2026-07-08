@@ -225,13 +225,14 @@ git clone https://github.com/rapbot-ai/rapgenie
 sudo apt install -y python3-venv python3-pip build-essential python3-dev
 ```
 
-12. Create a radtts virtual environment and install dependencies:
+12. Create a radtts virtual environment, add lmdb to requirements, then install dependencies:
 
 ```
 cd ~/radtts
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
+echo "lmdb" >> requirements.txt
 pip install -r requirements.txt
 ```
 
@@ -328,3 +329,5 @@ npm run pm2
 - gpt-j-8bit_couplets_generator.pt
 - hifigan_libritts100360_generator0p5.pt
 - hifigan_22khz_config.json
+
+2. Fork radtts and add lmdb in the fork so the step that does this manually is not needed
