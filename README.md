@@ -56,7 +56,7 @@ scp -i "$PEM_FILE" ./hifigan_22khz_config.json "ubuntu@$GPU_IP_ADDRESS:/home/ubu
 
 ~/models <-- where the lupe fiasco and hifigan libritts model actually lives
 
-~/radtts <-- clone repo from github [here](https://github.com/NVIDIA/radtts)
+~/radtts <-- clone your fork from github [here](https://github.com/rapbot-ai/radtts)
 
 ~/rapgenie <-- clone repo from github [here](https://github.com/rapbot-ai/rapgenie)
 
@@ -205,15 +205,16 @@ If it's not, you probably installed CUDA or your nvidia drivers incorrectly.
 nvidia-smi
 ```
 
-10. Clone the `rapgenie` and `radtts` repos to the instance:
+10. Clone the `rapgenie` repo and our `radtts` fork )which fixes some dependency incompatibilities)
 
 ```
 sudo apt update
 sudo apt install -y git
 git --version
-cd ~
-git clone https://github.com/NVIDIA/radtts
 git clone https://github.com/rapbot-ai/rapgenie
+git clone https://github.com/rapbot-ai/radtts
+cd ~/radtts
+git checkout a5177136f37fa55c74ad16c1a2cbd705a543a5ad
 ```
 
 11. Install Python tooling for virtual environments:
@@ -224,14 +225,13 @@ This project currently supports Python 3.11.x for `radtts`.
 sudo apt install -y python3-venv python3-pip build-essential python3-dev
 ```
 
-12. Create a radtts virtual environment, add lmdb to requirements, then install dependencies:
+12. Create a radtts virtual environment and install dependencies:
 
 ```
 cd ~/radtts
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
-echo "lmdb" >> requirements.txt
 pip install -r requirements.txt
 ```
 
@@ -301,17 +301,7 @@ curl --location "http://$GPU_IP_ADDRESS:3020/infer" \
 }'
 ```
 
-23. That inference command might throw an error about missing packages, or have version mismatches. If those happen, just install them  individually:
-
-```
-python3 -m pip install <MISSING-DEPENDENCY>
-```
-
-Numpy in particular can be tricky. v2.0.0 deprecated some methods we need. You might have to go in and manually fix the librosa packages use of numpy to make it work. This could perhaps be fixed by pinning the version of librosa in `radtts`, but I have not tried that. From what I can remember:
-
-  a. Change `np.float` to `float` in `.../utils/utils.py`.
-
-  b. Change `np.complex` to `np.complex128` (or `np.complex64`, whatever number it currently has).
+23. If inference fails due to Python dependencies, verify you are on the pinned `radtts` commit SHA and reinstall from that fork's `requirements.txt` in the active `~/radtts/.venv`.
 
 24. Install pm2 and then start the process running in the background:
 
@@ -328,5 +318,3 @@ npm run pm2
 - gpt-j-8bit_couplets_generator.pt
 - hifigan_libritts100360_generator0p5.pt
 - hifigan_22khz_config.json
-
-2. Fork radtts and add lmdb in the fork so the step that does this manually is not needed
