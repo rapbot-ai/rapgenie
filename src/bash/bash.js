@@ -1,6 +1,8 @@
 const { spawn } = require('child_process')
 const { appendFileSync } = require('fs')
 
+const SERVER_PYTHON_LOCATION = '/home/ubuntu/radtts/.venv/bin/python'
+
 const execComm = (comm, opts = {}, logFileName) => {
   const { needsData, printLogs, saveLogs } = opts
 
@@ -43,7 +45,7 @@ const execComm = (comm, opts = {}, logFileName) => {
 const execPythonComm = (args, opts = {}) => {
   const { printLogs } = opts
   return new Promise((resolve, reject) => {
-    const terminal = spawn('/usr/bin/python3', args)
+    const terminal = spawn(SERVER_PYTHON_LOCATION, args)
 
     // eslint-disable-next-line no-unused-vars
     // ALWAYS MUST BE LEFT ON, OR ELSE PROCESS WON'T EXECUTE FOR SOME REASON:
