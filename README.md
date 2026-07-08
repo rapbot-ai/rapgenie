@@ -210,26 +210,29 @@ nvidia-smi
 
 10. Clone the `rapgenie` and `radtts` repos to the instance:
 
-[radtts](https://github.com/NVIDIA/radtts)
-
-[rapgenie](https://github.com/rapbot-ai/rapgenie)
-
-11. Install pip:
-
 ```
-sudo apt install python3-pip -y
-```
-
-11. Install dependencies for radtts:
-
-```
-python3 -m pip install -r requirements.txt
+sudo apt update
+sudo apt install -y git
+git --version
+cd ~
+git clone https://github.com/NVIDIA/radtts
+git clone https://github.com/rapbot-ai/rapgenie
 ```
 
-It might have some missing dependencies. Just install those individually:
+11. Install Python tooling for virtual environments:
 
 ```
-python3 -m pip install <MISSING-DEPENDENCY>
+sudo apt install -y python3-venv python3-pip build-essential python3-dev
+```
+
+12. Create a radtts virtual environment and install dependencies:
+
+```
+cd ~/radtts
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
 ```
 
 13. Install nvm:
