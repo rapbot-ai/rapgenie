@@ -221,6 +221,8 @@ git clone https://github.com/rapbot-ai/rapgenie
 
 11. Install Python tooling for virtual environments:
 
+This project currently supports Python 3.11.x for `radtts`.
+
 ```
 sudo apt install -y python3-venv python3-pip build-essential python3-dev
 ```
@@ -302,7 +304,7 @@ curl --location 'http://IP_ADDRESS_HERE:3020/infer' \
 }'
 ```
 
-23. That inference command might throw an error about missing packages, or have version mismatches. If those happen, just install them individually:
+23. That inference command might throw an error about missing packages, or have version mismatches. If those happen, just install them  individually:
 
 ```
 python3 -m pip install <MISSING-DEPENDENCY>
