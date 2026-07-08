@@ -171,7 +171,7 @@ ssh -i <PEM-NAME-HERE>4.pem ubuntu@<INSTANCE-IP-ADDRESS-HERE>
 
 ```
 mkdir /home/ubuntu/models
-mkdir /home/ubuntu/tts-datasets
+mkdir /home/ubuntu/tts-datasets && mkdir /home/ubuntu/tts-datasets/8-formatted-lupe-lines-second-pass-22khz-mono-465
 mkdir /home/ubuntu/jobs
 ```
 
