@@ -38,14 +38,14 @@ Voice Transfer:
 
 ## COPY FILE OR DIRECTORY TO/FROM AWS EC2 TO/FROM LOCAL DISK:
 
-scp -i ~/<PEM-FILE-NAME>.pem <USER-NAME>@<IP-ADDRESS-HERE>:<SOURCE-FILE-PATH> <LOCAL-DESTINATION-FILE-PATH>
+scp -i "$PEM_FILE" <LOCAL_SOURCE_PATH> "ubuntu@$GPU_IP_ADDRESS:<REMOTE_DESTINATION_PATH>"
 
 *change -i to -r in the above command in order to copy folders*
 
 ### Example:
 
 ```
-scp -i ~/rapbot-gpu-4.pem ./hifigan_22khz_config.json ubuntu@18.208.144.207:/home/ubuntu/models
+scp -i "$PEM_FILE" ./hifigan_22khz_config.json "ubuntu@$GPU_IP_ADDRESS:/home/ubuntu/models"
 ```
 
 ## 
@@ -148,23 +148,20 @@ mkdir -p /home/ubuntu/test \
 
 # SETTING UP INFERENCE WITH A CUSTOM RADTTS MODEL:
 
-1. Go to AWS and Set up your instance:
-- ubuntu
-- 20.04
-- g4dn.xlarge
-- an ubuntu 22.04 g4dn.xlarge instance with 104 GB space.
-- 104 GB space
+1. Go to AWS and set up an Ubuntu g4dn.xlarge instance with 104 GB of space.
 
 2. Restrict the read-write perms of your .pem file so AWS doesn't complain about it:
 
 ```
-sudo chmod 400 <PEM-FILE-NAME>.pem
+PEM_FILE=<FULL_PATH_TO_PEM_FILE>
+chmod 400 "$PEM_FILE"
 ```
 
-3. Log onto the device using this command:
+3. Log onto the server:
 
 ```
-ssh -i <PEM-NAME-HERE>4.pem ubuntu@<INSTANCE-IP-ADDRESS-HERE>
+GPU_IP_ADDRESS=<INSTANCE_IP_ADDRESS_HERE>
+ssh -i "$PEM_FILE" "ubuntu@$GPU_IP_ADDRESS"
 ```
 
 4. Create the necessary folders: 
@@ -184,10 +181,10 @@ mkdir /home/ubuntu/jobs
 6. Upload those files to the EC2 instance:
 
 ```
-scp -i ~/rapbot-gpu-4.pem ./hifigan_22khz_config.json ubuntu@18.208.144.207:/home/ubuntu/models
-scp -i ~/rapbot-gpu-4.pem ./lupe-fiasco-radtts-model ubuntu@18.208.144.207:/home/ubuntu/models
-scp -i ~/rapbot-gpu-4.pem ./hifigan_libritts100360_generator0p5.pt ubuntu@18.208.144.207:/home/ubuntu/models
-scp -i ~/rapbot-gpu-4.pem ./8-formatted-lupe-lines-second-pass-22khz-mono-465/training.txt ubuntu@18.208.144.207:/home/ubuntu/tts-datasets/8-formatted-lupe-lines-second-pass-22khz-mono-465
+scp -i "$PEM_FILE" ./hifigan_22khz_config.json "ubuntu@$GPU_IP_ADDRESS:/home/ubuntu/models"
+scp -i "$PEM_FILE" ./lupe-fiasco-radtts-model "ubuntu@$GPU_IP_ADDRESS:/home/ubuntu/models"
+scp -i "$PEM_FILE" ./hifigan_libritts100360_generator0p5.pt "ubuntu@$GPU_IP_ADDRESS:/home/ubuntu/models"
+scp -i "$PEM_FILE" ./8-formatted-lupe-lines-second-pass-22khz-mono-465/training.txt "ubuntu@$GPU_IP_ADDRESS:/home/ubuntu/tts-datasets/8-formatted-lupe-lines-second-pass-22khz-mono-465"
 ```
 
 7. Install cuda toolkit using these directions. Input your instance config (Ubuntu, 20.04, Linux, etc.) to obtain the right installer [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_network).
@@ -297,7 +294,7 @@ npm run dev
 22. Perform inference by sending a GET request to /infer:
 
 ```
-curl --location 'http://IP_ADDRESS_HERE:3020/infer' \
+curl --location "http://$GPU_IP_ADDRESS:3020/infer" \
 --header 'Content-Type: application/json' \
 --data '{
     "inferenceBody": "this is a test"
