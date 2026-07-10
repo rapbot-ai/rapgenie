@@ -78,7 +78,35 @@ def resolve_warmstart_checkpoint(cfg: PipelineConfig, local_ckpt_dir: Path) -> P
     return local_path
 
 
-def build_train_command(cfg: PipelineConfig, warmstart_ckpt: Path, output_dir: Path, local_data_dir: Path) -> list[str]:
+def resolve_vocoder(cfg: PipelineConfig, local_ckpt_dir: Path) -> tuple[Path, Path]:
+    """Download the HiFi-GAN vocoder checkpoint + config used to synthesize
+    audio for validation-time logging (compute_validation_loss -> load_vocoder
+    in the vendored train.py/inference.py). RADTTS's bundled config_ljs_dap.json
+    points at 'models/hifigan_config_22khz.json' and 'models/hifigan_ljs_generator_v1'
+    by default — files that ship with nobody's checkout, same category as the
+    warmstart checkpoint. StorageConfig already had vocoder_checkpoint/
+    vocoder_config fields (and train.yaml already sets them); this was just
+    never wired up to actually download them and override the paths."""
+    store = build_blob_store(cfg.storage.backend, cfg.storage.bucket)
+    local_ckpt = local_ckpt_dir / "vocoder.pt"
+    local_config = local_ckpt_dir / "vocoder_config.json"
+    if not local_ckpt.exists():
+        logger.info("downloading vocoder checkpoint -> %s", local_ckpt)
+        store.download(cfg.storage.vocoder_checkpoint, local_ckpt)
+    if not local_config.exists():
+        logger.info("downloading vocoder config -> %s", local_config)
+        store.download(cfg.storage.vocoder_config, local_config)
+    return local_config, local_ckpt
+
+
+def build_train_command(
+    cfg: PipelineConfig,
+    warmstart_ckpt: Path,
+    output_dir: Path,
+    local_data_dir: Path,
+    vocoder_config: Path,
+    vocoder_ckpt: Path,
+) -> list[str]:
     """Translate the typed config into RADTTS's expected `-p key=value`
     overrides. This is the *only* place in the whole pipeline that speaks
     RADTTS's flat CLI dialect — everywhere else in this codebase deals with
@@ -106,6 +134,11 @@ def build_train_command(cfg: PipelineConfig, warmstart_ckpt: Path, output_dir: P
         "data_config.training_files.LJS.filelist": "training.txt",
         "data_config.validation_files.LJS.basedir": f"{local_data_dir}/",
         "data_config.validation_files.LJS.filelist": "validation.txt",
+        # Same story as data_config above: RADTTS's bundled default
+        # ('models/hifigan_config_22khz.json', 'models/hifigan_ljs_generator_v1')
+        # isn't in this image. Point at what resolve_vocoder() downloaded.
+        "train_config.vocoder_config_path": str(vocoder_config),
+        "train_config.vocoder_checkpoint_path": str(vocoder_ckpt),
     }
     if cfg.resume.enabled:
         overrides["train_config.checkpoint_path"] = str(output_dir / cfg.resume.from_checkpoint)
@@ -152,7 +185,8 @@ def run(config_path: Path) -> int:
         return 3
 
     warmstart_ckpt = resolve_warmstart_checkpoint(cfg, local_ckpt_dir)
-    cmd = build_train_command(cfg, warmstart_ckpt, local_ckpt_dir, local_data_dir)
+    vocoder_config, vocoder_ckpt = resolve_vocoder(cfg, local_ckpt_dir)
+    cmd = build_train_command(cfg, warmstart_ckpt, local_ckpt_dir, local_data_dir, vocoder_config, vocoder_ckpt)
     logger.info("launching: %s", " ".join(cmd))
 
     # RADTTS's bundled config_ljs_dap.json is full of paths relative to the
