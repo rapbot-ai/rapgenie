@@ -70,22 +70,40 @@ class S3BlobStore:
         local_path.parent.mkdir(parents=True, exist_ok=True)
         self._client.download_file(self.bucket, remote_path, str(local_path))
 
-    def download_prefix(self, remote_prefix: str, local_dir: Path) -> None:
+    def download_prefix(self, remote_prefix: str, local_dir: Path, max_workers: int = 32) -> None:
         """Downloads every object under `remote_prefix` (e.g. an S3 "folder"
         like `datasets/lupefiasco/.../wavs/`) into `local_dir`, preserving
         the relative key structure. Mirrors what `aws s3 sync` did in
-        RUNBOOK.md's upload step, on the way back down."""
+        RUNBOOK.md's upload step, on the way back down.
+
+        Downloads happen concurrently via a thread pool: with ~465 small wav
+        files, a plain sequential loop pays S3 round-trip latency once per
+        file, which dominates over actual transfer time. boto3 clients are
+        thread-safe (shared connection pool under the hood), so fanning
+        out download_file calls across threads is the standard fix — same
+        effect as `aws s3 sync`'s built-in parallelism."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
         local_dir.mkdir(parents=True, exist_ok=True)
         prefix = remote_prefix.rstrip("/") + "/"
+
+        keys: list[str] = []
         paginator = self._client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
             for obj in page.get("Contents", []):
                 key = obj["Key"]
-                if key.endswith("/"):
-                    continue  # S3 "directory marker" objects, not real files
-                local_path = local_dir / key[len(prefix):]
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                self._client.download_file(self.bucket, key, str(local_path))
+                if not key.endswith("/"):  # skip S3 "directory marker" objects
+                    keys.append(key)
+
+        def _download_one(key: str) -> None:
+            local_path = local_dir / key[len(prefix):]
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            self._client.download_file(self.bucket, key, str(local_path))
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(_download_one, key): key for key in keys}
+            for future in as_completed(futures):
+                future.result()  # re-raise any download failure immediately
 
     def upload(self, local_path: Path, remote_path: str) -> None:
         self._client.upload_file(str(local_path), self.bucket, remote_path)
