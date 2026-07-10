@@ -20,6 +20,8 @@ const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
 
+require('dotenv').config()
+
 const { RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID } = process.env
 
 if (!RUNPOD_API_KEY) {

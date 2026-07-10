@@ -14,6 +14,7 @@ from typing import Protocol
 
 class BlobStore(Protocol):
     def download(self, remote_path: str, local_path: Path) -> None: ...
+    def download_prefix(self, remote_prefix: str, local_dir: Path) -> None: ...
     def upload(self, local_path: Path, remote_path: str) -> None: ...
     def exists(self, remote_path: str) -> bool: ...
 
@@ -32,6 +33,18 @@ class LocalBlobStore:
         src = self._resolve(remote_path)
         local_path.parent.mkdir(parents=True, exist_ok=True)
         local_path.write_bytes(src.read_bytes())
+
+    def download_prefix(self, remote_prefix: str, local_dir: Path) -> None:
+        """Copies every file under `remote_prefix` into `local_dir`,
+        preserving the relative directory structure — e.g. the `wavs/`
+        folder alongside a training filelist."""
+        src_dir = self._resolve(remote_prefix)
+        local_dir.mkdir(parents=True, exist_ok=True)
+        for f in src_dir.rglob("*"):
+            if f.is_file():
+                dst = local_dir / f.relative_to(src_dir)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_bytes(f.read_bytes())
 
     def upload(self, local_path: Path, remote_path: str) -> None:
         dst = self._resolve(remote_path)
@@ -56,6 +69,23 @@ class S3BlobStore:
     def download(self, remote_path: str, local_path: Path) -> None:
         local_path.parent.mkdir(parents=True, exist_ok=True)
         self._client.download_file(self.bucket, remote_path, str(local_path))
+
+    def download_prefix(self, remote_prefix: str, local_dir: Path) -> None:
+        """Downloads every object under `remote_prefix` (e.g. an S3 "folder"
+        like `datasets/lupefiasco/.../wavs/`) into `local_dir`, preserving
+        the relative key structure. Mirrors what `aws s3 sync` did in
+        RUNBOOK.md's upload step, on the way back down."""
+        local_dir.mkdir(parents=True, exist_ok=True)
+        prefix = remote_prefix.rstrip("/") + "/"
+        paginator = self._client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if key.endswith("/"):
+                    continue  # S3 "directory marker" objects, not real files
+                local_path = local_dir / key[len(prefix):]
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                self._client.download_file(self.bucket, key, str(local_path))
 
     def upload(self, local_path: Path, remote_path: str) -> None:
         self._client.upload_file(str(local_path), self.bucket, remote_path)

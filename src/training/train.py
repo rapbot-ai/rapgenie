@@ -57,6 +57,11 @@ def resolve_dataset(cfg: PipelineConfig, local_data_dir: Path) -> None:
         logger.info("downloading %s -> %s", remote, local)
         store.download(remote, local)
 
+    wavs_remote = f"{cfg.storage.data_prefix}/wavs"
+    wavs_local = local_data_dir / "wavs"
+    logger.info("downloading %s -> %s", wavs_remote, wavs_local)
+    store.download_prefix(wavs_remote, wavs_local)
+
     assert_dataset_ready(
         train_filelist=local_data_dir / "training.txt",
         val_filelist=local_data_dir / "validation.txt",
