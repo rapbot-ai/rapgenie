@@ -155,7 +155,18 @@ def run(config_path: Path) -> int:
     cmd = build_train_command(cfg, warmstart_ckpt, local_ckpt_dir, local_data_dir)
     logger.info("launching: %s", " ".join(cmd))
 
-    proc = subprocess.run(cmd)
+    # RADTTS's bundled config_ljs_dap.json is full of paths relative to the
+    # RADTTS repo itself — heteronyms_path, phoneme_dict_path,
+    # vocoder_config_path, vocoder_checkpoint_path, betabinom_cache_path,
+    # etc. That's not an oversight: the original notebook did `%cd
+    # /content/RADTTS` before invoking train.py, so those paths always
+    # resolved relative to the repo root. Our subprocess otherwise inherits
+    # this process's cwd (/app, per the Dockerfile's WORKDIR), so without
+    # this, each relative path fails FileNotFoundError one at a time as
+    # training progresses further. Setting cwd here reproduces the
+    # notebook's %cd — the paths WE override above (checkpoints, warmstart,
+    # local_data_dir) are all absolute, so this doesn't affect them.
+    proc = subprocess.run(cmd, cwd=str(RADTTS_REPO))
     upload_checkpoints(cfg, local_ckpt_dir)
 
     if proc.returncode != 0:
