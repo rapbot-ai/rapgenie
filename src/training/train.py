@@ -29,6 +29,8 @@ import argparse
 import logging
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 from training.config import ConfigError, PipelineConfig, load_config
@@ -154,12 +156,54 @@ def build_train_command(
     ]
 
 
-def upload_checkpoints(cfg: PipelineConfig, output_dir: Path) -> None:
+def _watch_and_offload_checkpoints(
+    cfg: PipelineConfig, output_dir: Path, stop_event: threading.Event, poll_interval: float = 15.0
+) -> None:
+    """Runs in a background thread for the lifetime of the RADTTS training
+    subprocess. Uploads each new checkpoint to blob storage and deletes it
+    locally as soon as it appears, instead of leaving everything on disk
+    until the whole run finishes.
+
+    RADTTS's own save_checkpoint() never rotates or deletes old checkpoints
+    — every iters_per_checkpoint iterations it writes a brand new model_<N>
+    file and keeps every previous one forever. On a fixed-size container
+    disk that grows without bound and eventually fails mid-write (exactly
+    what happened: torch.save's PytorchStreamWriter died with a byte-count
+    mismatch after the 4th checkpoint filled the disk). Uploading-then-
+    deleting each checkpoint as it's written keeps local disk usage roughly
+    constant no matter how long training runs, without touching vendored
+    RADTTS source — this thread just watches the output directory from
+    the outside.
+
+    torch.save() isn't atomic (no write-to-temp-then-rename), so a
+    checkpoint file can be mid-write when this thread notices it. Skip any
+    file whose size hasn't stabilized across a short gap; pick it up on the
+    next poll instead of risking an upload of a truncated checkpoint."""
     store = build_blob_store(cfg.storage.backend, cfg.storage.bucket)
-    for ckpt in sorted(output_dir.glob("model_*")):
-        remote = f"{cfg.storage.checkpoint_prefix}/{cfg.run_id}/{ckpt.name}"
-        logger.info("uploading checkpoint %s -> %s", ckpt, remote)
-        store.upload(ckpt, remote)
+    uploaded: set[str] = set()
+
+    def _sweep() -> None:
+        for ckpt in sorted(output_dir.glob("model_*")):
+            if ckpt.name in uploaded:
+                continue
+            try:
+                size_before = ckpt.stat().st_size
+                time.sleep(1)
+                size_after = ckpt.stat().st_size
+            except FileNotFoundError:
+                continue  # vanished between glob() and stat() — skip, not ours to worry about
+            if size_before != size_after:
+                continue  # still being written; catch it on the next sweep
+
+            remote = f"{cfg.storage.checkpoint_prefix}/{cfg.run_id}/{ckpt.name}"
+            logger.info("uploading checkpoint %s -> %s (then deleting local copy)", ckpt, remote)
+            store.upload(ckpt, remote)
+            ckpt.unlink()
+            uploaded.add(ckpt.name)
+
+    while not stop_event.wait(poll_interval):
+        _sweep()
+    _sweep()  # final sweep once the subprocess has exited, to catch the last checkpoint written
 
 
 def run(config_path: Path) -> int:
@@ -200,8 +244,18 @@ def run(config_path: Path) -> int:
     # training progresses further. Setting cwd here reproduces the
     # notebook's %cd — the paths WE override above (checkpoints, warmstart,
     # local_data_dir) are all absolute, so this doesn't affect them.
+    stop_watcher = threading.Event()
+    watcher = threading.Thread(
+        target=_watch_and_offload_checkpoints,
+        args=(cfg, local_ckpt_dir, stop_watcher),
+        daemon=True,
+    )
+    watcher.start()
+
     proc = subprocess.run(cmd, cwd=str(RADTTS_REPO))
-    upload_checkpoints(cfg, local_ckpt_dir)
+
+    stop_watcher.set()
+    watcher.join(timeout=120)  # give the final sweep time to upload whatever's left
 
     if proc.returncode != 0:
         logger.error("training process exited with code %s", proc.returncode)
