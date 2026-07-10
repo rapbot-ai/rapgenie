@@ -78,7 +78,7 @@ def resolve_warmstart_checkpoint(cfg: PipelineConfig, local_ckpt_dir: Path) -> P
     return local_path
 
 
-def build_train_command(cfg: PipelineConfig, warmstart_ckpt: Path, output_dir: Path) -> list[str]:
+def build_train_command(cfg: PipelineConfig, warmstart_ckpt: Path, output_dir: Path, local_data_dir: Path) -> list[str]:
     """Translate the typed config into RADTTS's expected `-p key=value`
     overrides. This is the *only* place in the whole pipeline that speaks
     RADTTS's flat CLI dialect — everywhere else in this codebase deals with
@@ -96,6 +96,16 @@ def build_train_command(cfg: PipelineConfig, warmstart_ckpt: Path, output_dir: P
         "train_config.output_directory": str(output_dir),
         "train_config.warmstart_checkpoint_path": str(warmstart_ckpt),
         "model_config.n_speakers": cfg.raw["model"]["n_speakers"],
+        # RADTTS's own bundled config_ljs_dap.json points these at its demo
+        # filelist ('filelists/ljs_audiopath_text_speaker_train_filelist.txt'),
+        # which doesn't exist in this image. Point it at what
+        # resolve_dataset() actually downloaded instead. audiodir is left
+        # alone — it's already "wavs", matching the folder name we download
+        # into.
+        "data_config.training_files.LJS.basedir": f"{local_data_dir}/",
+        "data_config.training_files.LJS.filelist": "training.txt",
+        "data_config.validation_files.LJS.basedir": f"{local_data_dir}/",
+        "data_config.validation_files.LJS.filelist": "validation.txt",
     }
     if cfg.resume.enabled:
         overrides["train_config.checkpoint_path"] = str(output_dir / cfg.resume.from_checkpoint)
@@ -142,7 +152,7 @@ def run(config_path: Path) -> int:
         return 3
 
     warmstart_ckpt = resolve_warmstart_checkpoint(cfg, local_ckpt_dir)
-    cmd = build_train_command(cfg, warmstart_ckpt, local_ckpt_dir)
+    cmd = build_train_command(cfg, warmstart_ckpt, local_ckpt_dir, local_data_dir)
     logger.info("launching: %s", " ".join(cmd))
 
     proc = subprocess.run(cmd)
