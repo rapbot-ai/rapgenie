@@ -18,6 +18,7 @@
 
 const path = require('path')
 const { execComm } = require('../../bash/bash.js')
+require('dotenv').config()
 
 const { DOCKERHUB_USERNAME } = process.env
 const version = process.argv[2]

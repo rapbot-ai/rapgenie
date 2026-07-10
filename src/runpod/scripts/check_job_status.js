@@ -11,6 +11,8 @@
  */
 
 const axios = require('axios')
+require('dotenv').config()
+
 
 const { RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID } = process.env
 const jobId = process.argv[2]
