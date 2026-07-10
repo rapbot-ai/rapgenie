@@ -54,6 +54,13 @@ RUN pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cu1
 RUN grep -v -E '^(torch|torchaudio|jupyter)$' /opt/RADTTS/requirements.txt > /tmp/radtts-requirements.txt && \
     pip3 install --no-cache-dir -r /tmp/radtts-requirements.txt
 
+# RADTTS's own train.py does `from torch.utils.tensorboard import SummaryWriter`,
+# but `tensorboard` itself isn't listed in the fork's requirements.txt (checked —
+# it's missing upstream too, unrelated to what commit a517713 pinned). Not
+# something to fix by editing the vendored fork's requirements.txt in place, so
+# it's installed explicitly here instead.
+RUN pip3 install --no-cache-dir tensorboard==2.16.2
+
 COPY src/training/requirements.txt ./requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
 
