@@ -7,7 +7,7 @@
  * Usage:
  *   export RUNPOD_API_KEY=...       # from https://www.runpod.io/console/user/settings
  *   export RUNPOD_ENDPOINT_ID=...   # from the endpoint's page in the RunPod console
- *   node submit_training_job.js [path/to/train.yaml]
+ *   node submit_training_job.js [path/to/train.yaml] [--resume-from model_600]
  *
  * Rewritten from bash on purpose: the original shelled out to `python3 -c
  * "import json; ..."` just to escape the config file's text into a JSON
@@ -31,9 +31,17 @@ if (!RUNPOD_ENDPOINT_ID) {
   throw new Error('Set RUNPOD_ENDPOINT_ID in your environment (from the RunPod console)')
 }
 
+const rawArgs = process.argv.slice(2)
+const resumeFlagIndex = rawArgs.indexOf('--resume-from')
+const resumeFrom = resumeFlagIndex !== -1 ? rawArgs[resumeFlagIndex + 1] : null
+if (resumeFlagIndex !== -1 && !resumeFrom) {
+  throw new Error('--resume-from requires a checkpoint name, e.g. --resume-from model_600')
+}
+const positionalArgs = rawArgs.filter((_, i) => i !== resumeFlagIndex && i !== resumeFlagIndex + 1)
+
 // Default: scripts -> runpod -> src, then down into configs -> src/configs/train.yaml
 const defaultConfigPath = path.resolve(__dirname, '../../configs/train.yaml')
-const configPath = process.argv[2] || defaultConfigPath
+const configPath = positionalArgs[0] || defaultConfigPath
 
 if (!fs.existsSync(configPath)) {
   throw new Error(`config file not found: ${configPath}`)
@@ -47,8 +55,12 @@ const configYaml = fs.readFileSync(configPath, 'utf-8')
 // 172800000 ms = 48h execution budget, 259200000 ms = 72h total lifespan
 // (48h execution + 24h headroom for queue time). Adjust to your actual
 // expected training duration.
-const buildPayload = (configYamlText) => ({
-  input: { config_yaml: configYamlText },
+const buildPayload = (configYamlText, resumeFromCheckpoint = null) => ({
+  input: {
+    config_yaml: configYamlText,
+    resume: Boolean(resumeFromCheckpoint),
+    resume_from: resumeFromCheckpoint,
+  },
   policy: {
     executionTimeout: 172800000,
     ttl: 259200000,
@@ -61,7 +73,7 @@ const submitJob = async () => {
     Authorization: `Bearer ${RUNPOD_API_KEY}`,
     'Content-Type': 'application/json',
   }
-  const payload = buildPayload(configYaml)
+  const payload = buildPayload(configYaml, resumeFrom)
 
   console.log(`Submitting ${configPath} to ${url}...`)
   const { data } = await axios.post(url, payload, { headers })

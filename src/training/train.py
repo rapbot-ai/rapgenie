@@ -15,8 +15,7 @@ config, environment, and process boundaries. What this adds on top:
      Google Drive is mounted at a fixed path.
   3. Sets up structured logging + W&B, tagged with the run_id (name + config
      hash + git commit) so every run is traceable back to what produced it.
-  4. Handles resume explicitly through config instead of sed-patching
-     `train.py`'s source to change the resume iteration.
+  4. Handles resume explicitly as a per-job value passed in from the outside.
   5. Uploads checkpoints to blob storage as they're written, instead of
      relying on Drive-mount durability.
   6. Exits with a non-zero code and a clear message on failure, so it behaves
@@ -33,7 +32,7 @@ import threading
 import time
 from pathlib import Path
 
-from training.config import ConfigError, PipelineConfig, load_config
+from training.config import ConfigError, PipelineConfig, ResumeConfig, load_config
 from training.data_validation import DatasetValidationError, assert_dataset_ready
 from training.storage import build_blob_store
 
@@ -206,9 +205,14 @@ def _watch_and_offload_checkpoints(
     _sweep()  # final sweep once the subprocess has exited, to catch the last checkpoint written
 
 
-def run(config_path: Path) -> int:
+def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
+    # `resume` is passed straight into load_config() as its one and only
+    # source — never read from config_path's YAML, never applied as a
+    # second, later override on top of it. See config.py's load_config()
+    # docstring for why: two places that could each supply a resume value
+    # is exactly what we're avoiding here, even if they'd usually agree.
     try:
-        cfg = load_config(config_path)
+        cfg = load_config(config_path, resume=resume)
     except ConfigError as e:
         logger.error("config validation failed: %s", e)
         return 2

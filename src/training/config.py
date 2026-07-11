@@ -129,7 +129,7 @@ class PipelineConfig:
         return bool(self.raw.get("tracking", {}).get("wandb", {}).get("enabled", False))
 
 
-def load_config(path: str | Path) -> PipelineConfig:
+def load_config(path: str | Path, resume: ResumeConfig | None = None) -> PipelineConfig:
     """Load and validate a training config. Raises ConfigError on anything
     malformed, missing, or internally inconsistent."""
     path = Path(path)
@@ -142,7 +142,6 @@ def load_config(path: str | Path) -> PipelineConfig:
     try:
         run = raw["run"]
         storage = StorageConfig(**run["storage"])
-        resume = ResumeConfig(**raw["resume"])
         retry = RetryConfig(**raw["retry"])
         train = TrainConfig(**raw["train"])
     except KeyError as e:
@@ -154,7 +153,7 @@ def load_config(path: str | Path) -> PipelineConfig:
         run_name=run["name"],
         seed=run["seed"],
         storage=storage,
-        resume=resume,
+        resume=resume if resume is not None else ResumeConfig(enabled=False, from_checkpoint=None, override_iteration=None),
         retry=retry,
         train=train,
         raw=raw,
