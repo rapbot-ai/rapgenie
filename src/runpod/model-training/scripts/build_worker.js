@@ -19,6 +19,7 @@
  */
 
 const path = require('path')
+const { execSync } = require('child_process')
 const { execComm } = require('../../../bash/bash.js')
 // Explicit path, not dotenv's default (cwd-relative) lookup — this way it
 // always finds the repo-root .env regardless of which directory this script
@@ -66,8 +67,24 @@ const repoRoot = path.resolve(__dirname, '../../../..')
 const dockerfile = path.join(repoRoot, 'src/runpod/model-training/Dockerfile')
 const image = `docker.io/${DOCKERHUB_USERNAME}/radtts-train-worker:${version}`
 
+// Baked into the image as a build arg (see the Dockerfile) so
+// config.py's git_commit property can read it from the container's
+// environment instead of shelling out to `git rev-parse` at run time —
+// which always fails inside the container, since /app never has a .git
+// directory. Computed here, not inside the container, because this is the
+// one place in the whole pipeline that's guaranteed to be a real git
+// checkout. Falls back to "unknown" rather than failing the build outright
+// if, for some reason, this isn't run from inside a git repo.
+const getGitCommit = () => {
+  try {
+    return execSync('git rev-parse --short HEAD', { cwd: repoRoot }).toString().trim()
+  } catch {
+    return 'unknown'
+  }
+}
+
 const buildDockerBuildCommand = () =>
-  `docker build --platform linux/amd64 -f ${dockerfile} -t ${image} ${repoRoot}`
+  `docker build --platform linux/amd64 --build-arg GIT_COMMIT=${getGitCommit()} -f ${dockerfile} -t ${image} ${repoRoot}`
 
 const main = async () => {
   const buildCommand = buildDockerBuildCommand()

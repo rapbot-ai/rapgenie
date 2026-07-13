@@ -42,6 +42,16 @@ ARG RADTTS_COMMIT=a5177136f37fa55c74ad16c1a2cbd705a543a5ad
 RUN git clone ${RADTTS_REPO} /opt/RADTTS && \
     cd /opt/RADTTS && git checkout ${RADTTS_COMMIT}
 
+# rapgenie's own commit, not RADTTS_COMMIT above (that's the pinned vendored
+# fork's commit, a separate thing). Baked in at build time because /app never
+# has a .git directory — only specific files get COPYed in below, not the
+# whole repo — so config.py's git_commit property can't shell out to `git
+# rev-parse` inside the container the way it can when you run this locally
+# from an actual checkout. build_worker.js passes this as
+# --build-arg GIT_COMMIT=$(git rev-parse --short HEAD), computed on your
+# machine where .git genuinely exists.
+ARG GIT_COMMIT=unknown
+
 WORKDIR /app
 
 # The RADTTS requirements include the Python `sox` wrapper, whose legacy
@@ -87,6 +97,7 @@ COPY src/configs/train.yaml ./configs/train.yaml
 COPY src/runpod/model-training/handler.py .
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src
+    PYTHONPATH=/app/src \
+    GIT_COMMIT=${GIT_COMMIT}
 
 CMD ["python3", "-u", "handler.py"]

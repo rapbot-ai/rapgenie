@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import subprocess
 import sys
 import threading
@@ -155,6 +156,72 @@ def build_train_command(
     ]
 
 
+_TRAIN_ITER_RE = re.compile(r"^iter:\s*(\d+)\s*\(")
+
+
+def _parse_train_line(line: str) -> tuple[int, dict[str, float]] | None:
+    """Parses one of RADTTS's own per-iteration stdout lines, e.g.:
+
+        iter: 114  (0.79 s)  |  lr: 0.0005  |  loss_mel: -1.458  |  loss_prior: 0.023
+
+    into (114, {"lr": 0.0005, "loss_mel": -1.458, "loss_prior": 0.023}).
+    Returns None for anything that isn't one of these lines (dataset-loading
+    messages, "Epoch: N", validation output, etc.) — those aren't per-step
+    metrics and don't get logged.
+
+    Reads the vendored fork's print format (train.py, ~line 426:
+    `print_list = ["iter: {} ({:.2f} s) | lr: {}"...]`, one `| key: value`
+    appended per loss component) without touching that file — same
+    control-from-the-outside approach as the rest of this pipeline."""
+    segments = [s.strip() for s in line.split("|")]
+    match = _TRAIN_ITER_RE.match(segments[0])
+    if not match:
+        return None
+
+    iteration = int(match.group(1))
+    metrics: dict[str, float] = {}
+    for segment in segments[1:]:
+        if ":" not in segment:
+            continue
+        key, _, value = segment.partition(":")
+        try:
+            metrics[key.strip()] = float(value.strip())
+        except ValueError:
+            continue  # not a numeric "key: value" segment — skip, don't crash the run over a log line
+    return iteration, metrics
+
+
+def _run_training_subprocess(cmd: list[str], cwd: str, wandb_enabled: bool) -> int:
+    """Runs the RADTTS training subprocess, streaming its stdout back out
+    exactly as `subprocess.run(cmd, cwd=cwd)` (inherited stdio) did before —
+    RunPod's Logs tab looks identical — while also parsing each
+    per-iteration metrics line RADTTS already prints and forwarding it to
+    W&B when enabled. Never touches vendored RADTTS source; this only reads
+    what it already writes to stdout.
+
+    stderr is merged into stdout (rather than kept as a second inherited
+    stream) so there's one ordered pipe to read — the tradeoff is that
+    stdout/stderr interleaving is no longer guaranteed byte-for-byte in
+    original OS ordering, which doesn't matter for a training log."""
+    if wandb_enabled:
+        import wandb
+
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
+    )
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        line = line.rstrip("\n")
+        print(line, flush=True)
+        if wandb_enabled:
+            parsed = _parse_train_line(line)
+            if parsed is not None:
+                iteration, metrics = parsed
+                wandb.log({f"train/{k}": v for k, v in metrics.items()}, step=iteration)
+    proc.wait()
+    return proc.returncode
+
+
 def _watch_and_offload_checkpoints(
     cfg: PipelineConfig, output_dir: Path, stop_event: threading.Event, poll_interval: float = 15.0
 ) -> None:
@@ -219,7 +286,7 @@ def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
 
     logger.info("run_id=%s config_hash=%s git_commit=%s", cfg.run_id, cfg.config_hash, cfg.git_commit)
 
-    if cfg.tracking_wandb_enabled():
+    if cfg.wandb.enabled:
         _init_wandb(cfg)
 
     local_data_dir = Path("/data") / cfg.run_id
@@ -256,23 +323,43 @@ def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
     )
     watcher.start()
 
-    proc = subprocess.run(cmd, cwd=str(RADTTS_REPO))
+    # Default of 1 (failure) covers the case where _run_training_subprocess
+    # itself raises before returning a real code — wandb.finish() below still
+    # needs *some* exit_code, and "silently look like success" is the wrong
+    # default for "something went wrong we didn't even get a return code
+    # from."
+    returncode = 1
+    try:
+        returncode = _run_training_subprocess(cmd, cwd=str(RADTTS_REPO), wandb_enabled=cfg.wandb.enabled)
+    finally:
+        stop_watcher.set()
+        watcher.join(timeout=120)  # give the final sweep time to upload whatever's left
+        if cfg.wandb.enabled:
+            import wandb
 
-    stop_watcher.set()
-    watcher.join(timeout=120)  # give the final sweep time to upload whatever's left
+            wandb.finish(exit_code=returncode)
 
-    if proc.returncode != 0:
-        logger.error("training process exited with code %s", proc.returncode)
-    return proc.returncode
+    if returncode != 0:
+        logger.error("training process exited with code %s", returncode)
+    return returncode
 
 
 def _init_wandb(cfg: PipelineConfig) -> None:
     import wandb
 
     wandb.init(
-        project=cfg.raw["tracking"]["wandb"]["project"],
+        project=cfg.wandb.project,
+        # id=cfg.run_id (not just name=) is what makes a resumed job
+        # continue the SAME W&B run instead of silently creating a second,
+        # disconnected one under the same display name — name alone isn't
+        # unique across separate wandb.init() calls, id is. run_id is
+        # already the one deterministic identity for a run everywhere else
+        # in this codebase (checkpoint S3 prefix, logging), so this reuses
+        # it rather than inventing a second identifier.
+        id=cfg.run_id,
         name=cfg.run_id,
-        tags=cfg.raw["tracking"]["wandb"].get("tags", []),
+        resume="allow",
+        tags=cfg.wandb.tags,
         config=cfg.raw,
     )
 

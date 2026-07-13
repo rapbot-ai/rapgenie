@@ -1,7 +1,9 @@
 # Build from the rapgenie/ REPO ROOT, not from this src/training/ directory,
 # so it can COPY src/training and src/configs from here:
 #
-#   docker build -f src/training/Dockerfile -t radtts-train .
+#   docker build -f src/training/Dockerfile \
+#     --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) \
+#     -t radtts-train .
 #
 # Pinned CUDA + PyTorch base, instead of the notebook's Colab VM (whatever
 # CUDA/driver version Google happens to have provisioned that day).

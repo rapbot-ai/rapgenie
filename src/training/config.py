@@ -15,6 +15,7 @@ traceability, and reproducibility").
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -70,6 +71,26 @@ class RetryConfig:
 
 
 @dataclass(frozen=True)
+class WandbConfig:
+    """Unlike storage/retry/train, this section is genuinely optional — not
+    every run needs experiment tracking, and older/simpler configs shouldn't
+    be forced to add a tracking block they don't want. When it IS present
+    and enabled, though, it's still validated fully at load time rather than
+    read ad hoc from cfg.raw deep inside train.py — a malformed section
+    should fail before a GPU is ever touched, same as everything else here."""
+
+    enabled: bool = False
+    project: str | None = None
+    tags: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if self.enabled and not self.project:
+            raise ConfigError(
+                "tracking.wandb.enabled=true requires tracking.wandb.project to be set"
+            )
+
+
+@dataclass(frozen=True)
 class TrainConfig:
     epochs: int
     learning_rate: float
@@ -97,6 +118,7 @@ class PipelineConfig:
     resume: ResumeConfig
     retry: RetryConfig
     train: TrainConfig
+    wandb: WandbConfig
     raw: dict[str, Any] = field(repr=False)
 
     @property
@@ -108,6 +130,19 @@ class PipelineConfig:
 
     @property
     def git_commit(self) -> str:
+        """The GIT_COMMIT env var wins when it's set — that's the explicit
+        value baked into the Docker image at build time (see
+        src/runpod/model-training/Dockerfile and build_worker.js), which is
+        the only case that matters for a real deployed run: /app inside the
+        container never has a .git directory (only specific files get
+        COPYed in, not the whole repo), so `git rev-parse` always fails
+        there. The subprocess fallback below only ever fires for local/bare
+        execution straight from an actual checkout, where .git genuinely
+        exists and this is not two conflicting sources of the same fact —
+        at most one of the two is ever actually available."""
+        env_commit = os.environ.get("GIT_COMMIT")
+        if env_commit:
+            return env_commit
         try:
             return (
                 subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
@@ -125,9 +160,6 @@ class PipelineConfig:
         answerable."""
         return f"{self.run_name}-{self.config_hash}-{self.git_commit}"
 
-    def tracking_wandb_enabled(self) -> bool:
-        return bool(self.raw.get("tracking", {}).get("wandb", {}).get("enabled", False))
-
 
 def load_config(path: str | Path, resume: ResumeConfig | None = None) -> PipelineConfig:
     """Load and validate a training config. Raises ConfigError on anything
@@ -144,6 +176,14 @@ def load_config(path: str | Path, resume: ResumeConfig | None = None) -> Pipelin
         storage = StorageConfig(**run["storage"])
         retry = RetryConfig(**raw["retry"])
         train = TrainConfig(**raw["train"])
+        # tracking.wandb is optional — omit the whole "tracking" key, or
+        # "wandb" under it, and you get WandbConfig()'s defaults
+        # (enabled=False). "or {}" guards against `tracking:` present in the
+        # YAML with nothing under it (parses as None, not {}), which would
+        # otherwise raise AttributeError instead of the ConfigError this
+        # function is supposed to produce for bad config shapes.
+        wandb_raw = (raw.get("tracking") or {}).get("wandb") or {}
+        wandb = WandbConfig(**wandb_raw)
     except KeyError as e:
         raise ConfigError(f"missing required config key: {e}") from e
     except TypeError as e:
@@ -156,5 +196,6 @@ def load_config(path: str | Path, resume: ResumeConfig | None = None) -> Pipelin
         resume=resume if resume is not None else ResumeConfig(enabled=False, from_checkpoint=None, override_iteration=None),
         retry=retry,
         train=train,
+        wandb=wandb,
         raw=raw,
     )
