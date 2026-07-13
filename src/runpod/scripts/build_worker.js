@@ -5,11 +5,13 @@
  *
  * Usage:
  *   export DOCKERHUB_USERNAME=your-username
- *   node build_and_push.js v1.0.0
+ *   node build_worker.js v1.0.0
  *
- * Does NOT push automatically (same behavior as the original bash script) —
- * it builds, then prints the exact test/push commands so you can look at
- * the image before it leaves your machine.
+ * Named build_worker, not build_and_push: it does NOT push automatically
+ * (same behavior as the original bash script this was ported from, which is
+ * where the old build_and_push name came from) — it builds, then prints the
+ * exact test/push commands so you can look at the image before it leaves
+ * your machine and decide yourself when to push.
  *
  * Reuses execComm from ../../bash/bash.js — the same subprocess-spawning
  * helper rapgenie's own RADTTS inference calls already use — instead of
@@ -27,7 +29,7 @@ if (!DOCKERHUB_USERNAME) {
   throw new Error('Set DOCKERHUB_USERNAME in your environment')
 }
 if (!version) {
-  throw new Error('Usage: node build_and_push.js <version-tag>, e.g. v1.0.0')
+  throw new Error('Usage: node build_worker.js <version-tag>, e.g. v1.0.0')
 }
 
 // scripts -> runpod -> src -> rapgenie (repo root, the Docker build context)

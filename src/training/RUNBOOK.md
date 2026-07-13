@@ -110,7 +110,7 @@ is yours, not NVIDIA's — there's no public source for that one; the copy in
 ```bash
 cd rapgenie/src/runpod/scripts
 export DOCKERHUB_USERNAME=your-dockerhub-username
-node build_and_push.js v1.0.0
+node build_worker.js v1.0.0
 ```
 
 No local smoke test before push right now — kept simple, same as no unit

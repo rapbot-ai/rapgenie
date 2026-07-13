@@ -81,7 +81,7 @@ rapgenie/
       handler.py
       Dockerfile
       scripts/
-        build_and_push.js       # node, not bash — see the file for why
+        build_worker.js         # node, not bash — see the file for why
         submit_training_job.js
         check_job_status.js
 ```
@@ -103,7 +103,7 @@ syntax/logic, and the JSON/YAML payload construction is tested end-to-end
 against your actual `src/configs/train.yaml`.
 
 The philosophy here: simple first, enterprise/abstracted later. Right now
-that means no automated tests and no CI either — you run `build_and_push.js`
+that means no automated tests and no CI either — you run `build_worker.js`
 and `submit_training_job.js` by hand and eyeball the results, and that's
 fine until it isn't. Once the plain-CLI version is actually running a real
 job end to end, the natural next steps — in rough order — are: add back a
@@ -113,7 +113,7 @@ that manual eyeballing stops being reliable; add CI to run those tests +
 validate config on every PR; codify the AWS side as Terraform once you're
 touching it often enough that clicking/typing it by hand gets tedious or
 error-prone; automate image build/push/deploy in CI instead of running
-`build_and_push.js` by hand; and only reach for Kubernetes if you end up
+`build_worker.js` by hand; and only reach for Kubernetes if you end up
 needing multiple concurrent training jobs sharing a GPU fleet rather than
 one job at a time (RunPod Serverless already gets you scale-to-zero without
 it). Doing it simply first is also the better interview story — it shows
