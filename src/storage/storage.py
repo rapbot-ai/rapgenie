@@ -4,6 +4,13 @@ This replaces `/content/drive/MyDrive/...` scattered through every notebook
 cell. The training code never needs to know which backend it's talking to —
 same pattern as the provider-agnostic GPU dispatch layer you built at rapBot,
 just applied to storage instead of compute.
+
+Lives in its own top-level package (not inside `training/`) because it's not
+training-specific: the inference worker (src/inference/) needs the exact same
+download-a-file-from-S3 behavior to pull a checkpoint + vocoder, and importing
+a package literally called "training" from inference code would be a
+confusing, misleading dependency for something that's really just a generic
+storage client.
 """
 
 from __future__ import annotations

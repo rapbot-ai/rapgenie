@@ -60,11 +60,14 @@ RUN pip3 install --no-cache-dir tensorboard==2.16.2
 COPY src/training/requirements.txt ./requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# src/training -> /app/src/training (the "training" package), src/configs ->
-# /app/configs. PYTHONPATH=/app/src makes "training" importable as a
-# top-level package: `from training.config import ...`, matching the folder
-# name exactly.
+# src/training -> /app/src/training (the "training" package), src/storage ->
+# /app/src/storage (the blob-store client training.train imports; factored
+# out since inference needs it too, see src/runpod-inference/Dockerfile),
+# src/configs -> /app/configs. PYTHONPATH=/app/src makes both importable as
+# top-level packages: `from training.config import ...`, `from storage.storage
+# import ...`, matching the folder names exactly.
 COPY src/training ./src/training
+COPY src/storage ./src/storage
 COPY src/configs/train.yaml ./configs/train.yaml
 
 ENV PYTHONUNBUFFERED=1 \

@@ -34,7 +34,7 @@ from pathlib import Path
 
 from training.config import ConfigError, PipelineConfig, ResumeConfig, load_config
 from training.data_validation import DatasetValidationError, assert_dataset_ready
-from training.storage import build_blob_store
+from storage.storage import build_blob_store
 
 logging.basicConfig(
     level=logging.INFO,

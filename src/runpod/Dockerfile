@@ -69,7 +69,11 @@ RUN pip3 install --no-cache-dir "runpod~=1.7"
 
 # src/training -> /app/src/training (the "training" package, importable via
 # PYTHONPATH=/app/src as `training.X`, matching src/training/Dockerfile).
+# src/storage -> /app/src/storage: the blob-store client, factored out of
+# training/ because it's not training-specific — src/runpod-inference/
+# needs the exact same S3-download behavior for its checkpoint/vocoder.
 COPY src/training ./src/training
+COPY src/storage ./src/storage
 COPY src/configs/train.yaml ./configs/train.yaml
 COPY src/runpod/handler.py .
 
