@@ -165,17 +165,19 @@ first.
 
 ## 4. Submit a real training job
 
-`RUNPOD_API_KEY` / `RUNPOD_ENDPOINT_ID` (from step 3) are read from the
-repo-root `.env`, not passed inline. Run from the **rapgenie repo root**:
+`RUNPOD_TRAIN_API_KEY` / `RUNPOD_TRAIN_ENDPOINT_ID` (from step 3) are read
+from the repo-root `.env`, not passed inline. Run from the **rapgenie repo
+root**:
 
 ```bash
 node src/runpod/model-training/scripts/submit_training_job.js   # defaults to src/configs/train.yaml
 ```
 
-This prints a job id. Check on it:
+This prints a job id. Check on it — `check_job_status.js` is shared between
+training and inference, so it always needs an explicit `--endpoint`:
 
 ```bash
-node src/runpod/model-training/scripts/check_job_status.js <job_id>
+node src/runpod/scripts/check_job_status.js <job_id> --endpoint train
 ```
 
 Status will move through `IN_QUEUE` → (worker cold-starts, can take a

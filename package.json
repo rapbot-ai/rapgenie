@@ -11,7 +11,8 @@
     "restart": "pm2 kill && npm run pm2 && pm2 logs",
     "build:train": "node src/runpod/model-training/scripts/build_worker.js",
     "build:infer": "node src/runpod/inference/scripts/build_worker.js",
-    "check:train-status": "node src/runpod/model-training/scripts/check_job_status.js",
+    "check:train-status": "node src/runpod/scripts/check_job_status.js --endpoint train",
+    "check:infer-status": "node src/runpod/scripts/check_job_status.js --endpoint infer",
     "submit:train-job": "node src/runpod/model-training/scripts/submit_training_job.js",
     "submit:infer-job": "node src/runpod/inference/scripts/submit_inference_job.js"
   },

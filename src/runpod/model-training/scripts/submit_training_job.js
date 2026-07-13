@@ -4,8 +4,9 @@
  * Serverless endpoint via POST /run.
  * https://docs.runpod.io/serverless/endpoints/send-requests
  *
- * Usage (RUNPOD_API_KEY / RUNPOD_ENDPOINT_ID come from the repo-root .env,
- * not passed on the command line — see the dotenv.config() call below):
+ * Usage (RUNPOD_TRAIN_API_KEY / RUNPOD_TRAIN_ENDPOINT_ID come from the
+ * repo-root .env, not passed on the command line — see the dotenv.config()
+ * call below):
  *   node submit_training_job.js [path/to/train.yaml] [--resume-from model_600]
  *
  * Rewritten from bash on purpose: the original shelled out to `python3 -c
@@ -24,20 +25,45 @@ const axios = require('axios')
 // is run from, instead of depending on the caller happening to be cd'd there.
 require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') })
 
-const { RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID } = process.env
+// Single source of truth for usage — both --help and every validation error
+// below print this same string, so it can't drift out of sync with what the
+// script actually accepts. Runnable via `npm run submit:train-job -- <args>`
+// or directly with `node submit_training_job.js <args>`.
+const USAGE = `Usage: node submit_training_job.js [path/to/train.yaml] [--resume-from <checkpoint>]
 
-if (!RUNPOD_API_KEY) {
-  throw new Error('Set RUNPOD_API_KEY in your environment')
-}
-if (!RUNPOD_ENDPOINT_ID) {
-  throw new Error('Set RUNPOD_ENDPOINT_ID in your environment (from the RunPod console)')
-}
+Required (env, from repo-root .env):
+  RUNPOD_TRAIN_API_KEY       from https://www.runpod.io/console/user/settings
+  RUNPOD_TRAIN_ENDPOINT_ID   the TRAINING endpoint's ID (not the inference endpoint's)
+
+Optional (args):
+  [path/to/train.yaml]     defaults to src/configs/train.yaml
+  --resume-from <ckpt>     e.g. --resume-from model_600 — resumes training from that checkpoint;
+                            omit entirely to start a fresh run (resume defaults to false)
+
+Example:
+  npm run submit:train-job -- --resume-from model_600`
 
 const rawArgs = process.argv.slice(2)
+
+if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
+  console.log(USAGE)
+  process.exit(0)
+}
+
+const { RUNPOD_TRAIN_API_KEY, RUNPOD_TRAIN_ENDPOINT_ID } = process.env
+
+if (!RUNPOD_TRAIN_API_KEY || !RUNPOD_TRAIN_ENDPOINT_ID) {
+  console.error('Missing RUNPOD_TRAIN_API_KEY and/or RUNPOD_TRAIN_ENDPOINT_ID in your repo-root .env.\n')
+  console.error(USAGE)
+  process.exit(1)
+}
+
 const resumeFlagIndex = rawArgs.indexOf('--resume-from')
 const resumeFrom = resumeFlagIndex !== -1 ? rawArgs[resumeFlagIndex + 1] : null
 if (resumeFlagIndex !== -1 && !resumeFrom) {
-  throw new Error('--resume-from requires a checkpoint name, e.g. --resume-from model_600')
+  console.error('--resume-from requires a checkpoint name, e.g. --resume-from model_600.\n')
+  console.error(USAGE)
+  process.exit(1)
 }
 const positionalArgs = rawArgs.filter((_, i) => i !== resumeFlagIndex && i !== resumeFlagIndex + 1)
 
@@ -46,7 +72,9 @@ const defaultConfigPath = path.resolve(__dirname, '../../../configs/train.yaml')
 const configPath = positionalArgs[0] || defaultConfigPath
 
 if (!fs.existsSync(configPath)) {
-  throw new Error(`config file not found: ${configPath}`)
+  console.error(`config file not found: ${configPath}\n`)
+  console.error(USAGE)
+  process.exit(1)
 }
 
 const configYaml = fs.readFileSync(configPath, 'utf-8')
@@ -70,9 +98,9 @@ const buildPayload = (configYamlText, resumeFromCheckpoint = null) => ({
 })
 
 const submitJob = async () => {
-  const url = `https://api.runpod.ai/v2/${RUNPOD_ENDPOINT_ID}/run`
+  const url = `https://api.runpod.ai/v2/${RUNPOD_TRAIN_ENDPOINT_ID}/run`
   const headers = {
-    Authorization: `Bearer ${RUNPOD_API_KEY}`,
+    Authorization: `Bearer ${RUNPOD_TRAIN_API_KEY}`,
     'Content-Type': 'application/json',
   }
   const payload = buildPayload(configYaml, resumeFrom)
@@ -83,7 +111,7 @@ const submitJob = async () => {
 
   if (data.id) {
     console.log(`\nJob id: ${data.id}`)
-    console.log(`Check status with: node check_job_status.js ${data.id}`)
+    console.log(`Check status with: npm run check:train-status -- ${data.id}`)
   }
 }
 

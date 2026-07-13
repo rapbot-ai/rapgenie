@@ -28,14 +28,40 @@ const { execComm } = require('../../../bash/bash.js')
 // script from, instead of only working when you happen to be cd'd there.
 require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') })
 
+// Single source of truth for usage — both --help and every validation error
+// below print this same string, so it can't drift out of sync with what the
+// script actually accepts. Runnable via `npm run build:infer -- v1.0.0` or
+// directly with `node build_worker.js v1.0.0`.
+const USAGE = `Usage: node build_worker.js <version-tag>
+
+Required (env, from repo-root .env):
+  DOCKERHUB_USERNAME   your Docker Hub username, e.g. martinconnor
+
+Required (args):
+  <version-tag>        e.g. v1.0.0 — avoid :latest, see src/training/RUNBOOK.md for why
+
+Example:
+  npm run build:infer -- v1.0.5`
+
+const rawArgs = process.argv.slice(2)
+
+if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
+  console.log(USAGE)
+  process.exit(0)
+}
+
 const { DOCKERHUB_USERNAME } = process.env
-const version = process.argv[2]
+const version = rawArgs[0]
 
 if (!DOCKERHUB_USERNAME) {
-  throw new Error('Set DOCKERHUB_USERNAME in your environment')
+  console.error('Missing DOCKERHUB_USERNAME in your repo-root .env.\n')
+  console.error(USAGE)
+  process.exit(1)
 }
 if (!version) {
-  throw new Error('Usage: node build_worker.js <version-tag>, e.g. v1.0.0')
+  console.error('Missing required <version-tag> argument.\n')
+  console.error(USAGE)
+  process.exit(1)
 }
 
 // scripts -> inference -> runpod -> src -> rapgenie (repo root, the Docker build context)
