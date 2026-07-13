@@ -19,6 +19,7 @@
 const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
+const { appendJobLogEntry } = require('../../scripts/job_log.js')
 
 // Explicit path, not dotenv's default (cwd-relative) lookup — this way it
 // always finds the repo-root .env regardless of which directory this script
