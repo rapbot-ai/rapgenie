@@ -1,0 +1,15 @@
+# Pinned, unlike the notebook's `pip install -r requirements.txt` against
+# whatever RADTTS's requirements.txt says *today* on a fresh clone.
+#
+# Deliberately NOT listed here: torch, torchaudio, numpy, scipy, unidecode.
+# Those are owned by the vendored radtts fork's own requirements.txt
+# (installed first in the Dockerfile), which pins numpy/numba/llvmlite
+# together on purpose. Redeclaring a different numpy/scipy version here
+# would either silently downgrade the fork's tested pins (if this file
+# installs second) or get silently overridden (if it installs first) —
+# either way it's a footgun. One requirements.txt owns the ML/audio stack;
+# this one only owns what THIS pipeline adds on top of it.
+pyyaml==6.0.1
+wandb==0.17.0
+boto3==1.34.131
+google-cloud-storage==2.16.0

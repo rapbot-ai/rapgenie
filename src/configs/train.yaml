@@ -1,0 +1,88 @@
+# Single source of truth for one training run.
+# This file is versioned in git. Every run logs its own git commit hash + a hash
+# of this file, so any checkpoint can always be traced back to exactly the config
+# and code that produced it (this replaces the notebook's "paste this JSON into
+# configs/config_ljs_dap_.json by hand" step).
+
+run:
+  name: lupefiasco-radtts-warmstart-v5
+  seed: 1234
+  # Where inputs/outputs live. In the notebook this was hardcoded Google Drive
+  # paths sprinkled through every cell; here it's one block, and can be pointed
+  # at local disk, S3, or GCS via the same object-storage client.
+  storage:
+    backend: s3
+    bucket: martinconnor-radtts-training-artifacts
+    data_prefix: datasets/lupefiasco/8-formatted-lupe-lines-second-pass-22khz-mono-465
+    checkpoint_prefix: checkpoints/lupefiasco-radtts-warmstart-v5
+    vocoder_checkpoint: pretrained/hifigan_libritts100360_generator0p5.pt
+    vocoder_config: pretrained/hifigan_22khz_config.json
+    warmstart_checkpoint: pretrained/radtts++ljs-dap.pt
+
+data:
+  training_filelist: training.txt
+  validation_filelist: validation.txt
+  sampling_rate: 22050
+  filter_length: 1024
+  hop_length: 256
+  win_length: 1024
+  n_mel_channels: 80
+  mel_fmin: 0.0
+  mel_fmax: 8000.0
+  f0_min: 80.0
+  f0_max: 640.0
+  dur_min: 0.1
+  dur_max: 10.2
+  use_f0: true
+  use_energy_avg: true
+  symbol_set: radtts
+  cleaner_names: [radtts_cleaners]
+
+model:
+  n_speakers: 1
+  n_speaker_dim: 16
+  n_flows: 8
+  n_hidden: 1024
+  learn_alignments: true
+  include_modules: decatndpmvpredapm
+
+train:
+  epochs: 1000
+  learning_rate: 0.0005
+  weight_decay: 1.0e-6
+  batch_size: 32
+  optim_algo: RAdam
+  use_amp: true
+  grad_clip_val: 1.0
+  iters_per_checkpoint: 200
+  unfreeze_modules: all
+  loss_weights:
+    blank_logprob: -1
+    ctc_loss_weight: 0.1
+    binarization_loss_weight: 1.0
+    dur_loss_weight: 1.0
+    f0_loss_weight: 1.0
+    energy_loss_weight: 1.0
+    vpred_loss_weight: 1.0
+
+distributed:
+  backend: nccl
+  # nproc_per_node is passed at launch time via torchrun, not baked in here
+
+tracking:
+  wandb:
+    enabled: true
+    project: radtts-voice-clone
+    tags: [lupefiasco, warmstart, dap]
+  tensorboard:
+    enabled: true
+    # local log dir inside the run's own checkpoint prefix, not a Drive folder
+    # someone has to remember to point TensorBoard at
+
+retry:
+  # Not enforced by anything yet — training/config.py reads and validates
+  # these values, but nothing currently retries a failed run on this
+  # schedule. That's the natural next step once this is actually running
+  # (a supervising script or job queue reads these and relaunches on failure).
+  max_restarts: 3
+  restart_backoff_seconds: 60
