@@ -10,8 +10,12 @@
  *   node check_job_status.js <job_id>
  */
 
+const path = require('path')
 const axios = require('axios')
-require('dotenv').config()
+// Explicit path, not dotenv's default (cwd-relative) lookup — this way it
+// finds the repo-root .env regardless of which directory you run this
+// script from, instead of only working when you happen to be cd'd there.
+require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') })
 
 
 const { RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID } = process.env

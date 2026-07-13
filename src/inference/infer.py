@@ -27,7 +27,7 @@ import uuid
 from pathlib import Path
 
 from inference.config import InferenceConfig
-from storage.storage import build_blob_store
+from blob_storage.blob_storage import build_blob_store
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,7 +37,7 @@ logger = logging.getLogger("radtts_infer")
 
 RADTTS_REPO = Path("/opt/RADTTS")  # baked into the Docker image, not git-cloned at runtime
 
-# Baked into the image by src/runpod-inference/Dockerfile from
+# Baked into the image by src/runpod/inference/Dockerfile from
 # src/configs/speaker_roster.txt. A fixed, tiny, checked-in asset — not
 # something that varies per request, so it isn't part of InferenceConfig.
 SPEAKER_ROSTER_DIR = Path("/app/configs")

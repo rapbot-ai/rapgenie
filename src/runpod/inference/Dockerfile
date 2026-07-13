@@ -1,5 +1,6 @@
 # RunPod Serverless worker image for INFERENCE — a separate endpoint from
-# src/runpod/Dockerfile (training), not the same image with a task switch.
+# src/runpod/model-training/Dockerfile (training), not the same image with a
+# task switch.
 #
 # Training and inference have genuinely different resource shapes: training
 # is one long-running job needing a big container disk (dataset + warmstart +
@@ -11,12 +12,12 @@
 # duplicated logic), in exchange for each endpoint being configured — disk,
 # GPU tier, timeout, scaling — for what it actually does.
 #
-# Build from the rapgenie/ REPO ROOT, not from this src/runpod-inference/
-# directory, so it can COPY src/inference, src/storage, src/configs, and
-# src/runpod-inference/handler.py from here:
+# Build from the rapgenie/ REPO ROOT, not from this src/runpod/inference/
+# directory, so it can COPY src/inference, src/blob_storage, src/configs, and
+# this directory's own handler.py from here:
 #
 #   docker build --platform linux/amd64 \
-#     -f src/runpod-inference/Dockerfile \
+#     -f src/runpod/inference/Dockerfile \
 #     -t DOCKERHUB_USERNAME/radtts-infer-worker:v1.0.0 \
 #     .
 #
@@ -30,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 python3-dev python3.10-dev libpython3.10-dev python3-pip git ffmpeg sox build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-# Same fork, same pinned commit, same reasoning as ../training/Dockerfile:
+# Same fork, same pinned commit, same reasoning as ../model-training/Dockerfile:
 # upstream NVIDIA/RADTTS's requirements.txt breaks on a clean install
 # (unpinned numpy/numba/llvmlite, setuptools>=81 dropping distutils,
 # matplotlib>=3.8 vs contourpy). Fixed once in rapbot-ai/radtts@a517713 —
@@ -63,27 +64,27 @@ RUN pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cu1
 RUN grep -v -E '^(torch|torchaudio|jupyter)$' /opt/RADTTS/requirements.txt > /tmp/radtts-requirements.txt && \
     pip3 install --no-cache-dir -r /tmp/radtts-requirements.txt
 
-COPY src/inference/requirements.txt ./requirements.txt
+COPY src/runpod/inference/requirements.txt ./requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # The runpod SDK itself — not needed by the plain docker-run path, only this one.
 RUN pip3 install --no-cache-dir "runpod~=1.7"
 
-# src/inference -> /app/src/inference (the "inference" package), src/storage
-# -> /app/src/storage (shared blob-store client, also used by training — see
-# src/runpod/Dockerfile). PYTHONPATH=/app/src makes both importable as
-# top-level packages: `from inference.config import ...`,
-# `from storage.storage import ...`.
+# src/inference -> /app/src/inference (the "inference" package), src/blob_storage
+# -> /app/src/blob_storage (shared blob-store client, also used by training —
+# see ../model-training/Dockerfile). PYTHONPATH=/app/src makes both importable
+# as top-level packages: `from inference.config import ...`,
+# `from blob_storage.blob_storage import ...`.
 COPY src/inference ./src/inference
-COPY src/storage ./src/storage
+COPY src/blob_storage ./src/blob_storage
 
 # The static speaker-roster filelist (see src/configs/speaker_roster.txt) —
 # lets RADTTS rebuild the same speaker->id lookup table used at training
 # time without needing the full training dataset. Path here must match
-# SPEAKER_ROSTER_DIR in src/inference/infer.py.
+# SPEAKER_ROSTER_DIR in src/runpod/inference/infer.py.
 COPY src/configs/speaker_roster.txt ./configs/speaker_roster.txt
 
-COPY src/runpod-inference/handler.py .
+COPY src/runpod/inference/handler.py .
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src

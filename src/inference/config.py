@@ -1,10 +1,10 @@
 """Typed config for a single inference request.
 
-Unlike training/config.py, there's no YAML file here — an inference job is a
-single request/response, not a long-running run someone wants to version and
-diff over time. The whole config comes straight from the RunPod job payload
-(see src/runpod-inference/handler.py), which is why this is just a validated
-dataclass instead of a load_config()-from-file step.
+Unlike src/training/config.py, there's no YAML file here — an inference job
+is a single request/response, not a long-running run someone wants to version
+and diff over time. The whole config comes straight from the RunPod job
+payload (see src/runpod/inference/handler.py), which is why this is just a
+validated dataclass instead of a load_config()-from-file step.
 
 `checkpoint_s3_key` is required and must be the FULL S3 key (e.g.
 'checkpoints/lupefiasco-radtts-warmstart-v5/<run_id>/model_10800'), not just a

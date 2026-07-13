@@ -13,14 +13,17 @@
  * exact test/push commands so you can look at the image before it leaves
  * your machine and decide yourself when to push.
  *
- * Reuses execComm from ../../bash/bash.js — the same subprocess-spawning
+ * Reuses execComm from ../../../bash/bash.js — the same subprocess-spawning
  * helper rapgenie's own RADTTS inference calls already use — instead of
  * introducing a second way to shell out to a command.
  */
 
 const path = require('path')
-const { execComm } = require('../../bash/bash.js')
-require('dotenv').config()
+const { execComm } = require('../../../bash/bash.js')
+// Explicit path, not dotenv's default (cwd-relative) lookup — this way it
+// always finds the repo-root .env regardless of which directory this script
+// is run from, instead of depending on the caller happening to be cd'd there.
+require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') })
 
 const { DOCKERHUB_USERNAME } = process.env
 const version = process.argv[2]
@@ -32,9 +35,9 @@ if (!version) {
   throw new Error('Usage: node build_worker.js <version-tag>, e.g. v1.0.0')
 }
 
-// scripts -> runpod -> src -> rapgenie (repo root, the Docker build context)
-const repoRoot = path.resolve(__dirname, '../../..')
-const dockerfile = path.join(repoRoot, 'src/runpod/Dockerfile')
+// scripts -> model-training -> runpod -> src -> rapgenie (repo root, the Docker build context)
+const repoRoot = path.resolve(__dirname, '../../../..')
+const dockerfile = path.join(repoRoot, 'src/runpod/model-training/Dockerfile')
 const image = `docker.io/${DOCKERHUB_USERNAME}/radtts-train-worker:${version}`
 
 const buildDockerBuildCommand = () =>
@@ -53,7 +56,7 @@ const main = async () => {
   console.log('To push:')
   console.log(`  docker push ${image}`)
   console.log('')
-  console.log('Avoid :latest for production — see RUNBOOK.md for why.')
+  console.log('Avoid :latest for production — see src/training/RUNBOOK.md for why.')
 }
 
 if (require.main === module) {

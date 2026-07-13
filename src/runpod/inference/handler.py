@@ -1,11 +1,11 @@
 """RunPod Serverless handler — wraps inference.infer.run() as a queue-based
-job. Separate endpoint from src/runpod/handler.py (training); see
-src/runpod-inference/Dockerfile for why they're split.
+job. Separate endpoint from src/runpod/model-training/handler.py (training);
+see ./Dockerfile for why they're split.
 
 Follows RunPod's documented handler pattern (runpod.serverless.start with a
 handler function reading job["input"]): https://docs.runpod.io/serverless/workers/handler-functions
 
-Job input shape (see src/runpod-inference/scripts/submit_inference_job.js for
+Job input shape (see scripts/submit_inference_job.js for
 how this gets built and sent):
 
     {
@@ -43,7 +43,7 @@ def handler(job: dict) -> dict:
         return {
             "error": "job input must include 'checkpoint_s3_key': the full S3 key of a "
             "trained checkpoint, e.g. 'checkpoints/<run>/model_10800'. See "
-            "src/runpod-inference/scripts/submit_inference_job.js."
+            "src/runpod/inference/scripts/submit_inference_job.js."
         }
 
     # Only pass through fields the request actually set, so anything omitted

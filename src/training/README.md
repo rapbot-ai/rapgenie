@@ -1,7 +1,9 @@
 # RADTTS Training Pipeline — Colab → Production
 
-This is the training half of rapgenie: `src/training/` and `src/runpod/`
-rebuild your `radtts_train_model_and_infer.ipynb` notebook as a production
+This is the training half of rapgenie: `src/training/` (the deployment-agnostic
+package) and `src/runpod/model-training/` (the RunPod Serverless deploy
+wrapper around it) rebuild your `radtts_train_model_and_infer.ipynb` notebook
+as a production
 training pipeline, living alongside rapgenie's existing inference code
 (`src/express/`, `src/aws/`, `src/gpt/`, etc.) as its own domain. It trains
 the exact same model (NVIDIA RADTTS, warm-started, pitch/energy
@@ -50,7 +52,7 @@ teammate or a scheduler.
 | `sed`-patching `train.py` to change the resume iteration | `train.py` never gets hand-edited; resume (`resume_from`, `override_iteration`) is sent as its own field on the job payload, never stored in `train.yaml` — one source of truth, not a config value that could disagree with a submit-time override | Never mutate vendored/third-party source in place — patch through an explicit, single-sourced parameter, not config file state. |
 | TensorBoard pointed at a Drive folder you remember to launch | Structured experiment tracking (Weights & Biases run, tagged with git commit + config hash) alongside TensorBoard | Observability into the training lifecycle — brightwheel's JD calls this out directly ("evaluation harnesses," "monitoring that ties system health to output quality"). |
 | One process, one GPU, launched by hand in a notebook cell | `torchrun`-based launch (`src/training/launch.py`) that works identically on 1 GPU or N, dispatched to RunPod Serverless on demand | This is the GPU fleet/job-orchestration story from your rapBot work, generalized — the same muscle Luma-style and brightwheel-style ("durable job execution system: retries, explicit budgets, idempotency, monitoring") roles are hiring for. |
-| No retry/failure handling — a crashed Colab cell just... stops | Checkpointing on every eval interval + automatic resume-from-last-checkpoint on restart | Idempotency and retries under a budget — this is verbatim brightwheel JD language. Currently a manual per-job payload field (`resume`/`resume_from` on the RunPod request, see `src/runpod/handler.py`); a job-queue-enforced retry budget like the durable-job-queue interview-prep exercise you built separately is the natural next step once this is running. |
+| No retry/failure handling — a crashed Colab cell just... stops | Checkpointing on every eval interval + automatic resume-from-last-checkpoint on restart | Idempotency and retries under a budget — this is verbatim brightwheel JD language. Currently a manual per-job payload field (`resume`/`resume_from` on the RunPod request, see `src/runpod/model-training/handler.py`); a job-queue-enforced retry budget like the durable-job-queue interview-prep exercise you built separately is the natural next step once this is running. |
 | No automated validation at all | `src/training/config.py` + `src/training/data_validation.py` fail fast, on every run, before a GPU is ever touched | Config validated before it's ever promoted to a real GPU run — matches Assured's "release and configuration layer" framing. No CI yet on purpose (see "Deploying it for real" below) — validation happens locally / in the container at run time instead of in a pipeline. |
 
 ## Layout
@@ -65,25 +67,34 @@ rapgenie/
     configs/
       config_ljs_dap.json    # pre-existing: RADTTS inference config
       train.yaml              # the one thing you edit per training experiment
-    training/
+    blob_storage/              # local/S3/GCS blob-storage abstraction — top-level,
+      blob_storage.py          # shared with src/inference/, not nested under training/
+    training/                 # deployment-agnostic — no RunPod import anywhere in here
       config.py               # typed config loading + validation (fails fast on bad config)
       data_validation.py      # sanity-checks the aligned dataset before a run ever starts a GPU
       train.py                # thin, typed wrapper around RADTTS train.py — resolves paths,
                                # sets up W&B + structured logging, handles resume, uploads
                                # checkpoints to blob storage on each save
       launch.py               # torchrun-compatible entrypoint, works for 1 or N GPUs
-      storage.py               # local/S3/GCS blob-storage abstraction
       requirements.txt        # this pipeline's own deps (NOT torch/numpy/etc — see the file)
       Dockerfile               # pinned CUDA/PyTorch base + RADTTS deps, plain docker-run image
+                               # (the non-RunPod deploy path)
       README.md                # this file
       RUNBOOK.md               # the actual deploy-it-for-real commands
-    runpod/                   # the actual deployment target: handler, worker Dockerfile, submit/status scripts
-      handler.py
-      Dockerfile
-      scripts/
-        build_worker.js         # node, not bash — see the file for why
-        submit_training_job.js
-        check_job_status.js
+    runpod/
+      model-training/          # RunPod Serverless deploy wrapper around src/training/
+        handler.py
+        Dockerfile
+        scripts/
+          build_worker.js         # node, not bash — see the file for why
+          submit_training_job.js
+          check_job_status.js
+      inference/                # RunPod Serverless deploy wrapper around src/inference/
+        handler.py
+        Dockerfile
+        scripts/
+          build_worker.js
+          submit_inference_job.js
 ```
 
 The `training` package is importable as `training.config`, `training.train`,
@@ -138,10 +149,11 @@ cd src
 torchrun --nproc_per_node=4 -m training.launch --config configs/train.yaml
 ```
 
-RunPod Serverless (unattended, on-demand GPU — see `RUNBOOK.md`):
+RunPod Serverless (unattended, on-demand GPU — see `RUNBOOK.md`), from the
+**rapgenie repo root**:
 
 ```bash
-cd src/runpod/scripts && node submit_training_job.js
+node src/runpod/model-training/scripts/submit_training_job.js
 ```
 
 ## What to say in an interview about this

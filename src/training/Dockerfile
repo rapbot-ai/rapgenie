@@ -5,6 +5,12 @@
 #
 # Pinned CUDA + PyTorch base, instead of the notebook's Colab VM (whatever
 # CUDA/driver version Google happens to have provisioned that day).
+#
+# This is the non-RunPod deploy path: a plain `docker run` / torchrun on a
+# rented GPU box, no RunPod Serverless involved. It lives alongside the
+# training package itself (not under src/runpod/) because it isn't
+# RunPod-specific — see src/runpod/model-training/Dockerfile for the
+# RunPod Serverless version of this same image.
 FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -60,14 +66,14 @@ RUN pip3 install --no-cache-dir tensorboard==2.16.2
 COPY src/training/requirements.txt ./requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# src/training -> /app/src/training (the "training" package), src/storage ->
-# /app/src/storage (the blob-store client training.train imports; factored
-# out since inference needs it too, see src/runpod-inference/Dockerfile),
-# src/configs -> /app/configs. PYTHONPATH=/app/src makes both importable as
-# top-level packages: `from training.config import ...`, `from storage.storage
-# import ...`, matching the folder names exactly.
+# src/training -> /app/src/training (the "training" package), src/blob_storage
+# -> /app/src/blob_storage (the blob-store client training.train imports;
+# kept at top level since inference needs it too, see
+# src/runpod/inference/Dockerfile), src/configs -> /app/configs.
+# PYTHONPATH=/app/src makes both importable as top-level packages:
+# `from training.config import ...`, `from blob_storage.blob_storage import ...`.
 COPY src/training ./src/training
-COPY src/storage ./src/storage
+COPY src/blob_storage ./src/blob_storage
 COPY src/configs/train.yaml ./configs/train.yaml
 
 ENV PYTHONUNBUFFERED=1 \

@@ -3,7 +3,7 @@
 Follows RunPod's documented handler pattern (runpod.serverless.start with a
 handler function reading job["input"]): https://docs.runpod.io/serverless/workers/handler-functions
 
-Job input shape (see src/runpod/scripts/submit_training_job.js for how this
+Job input shape (see src/runpod/model-training/scripts/submit_training_job.js for how this
 gets built and sent):
 
     {
@@ -44,7 +44,7 @@ def handler(job: dict) -> dict:
     if not config_yaml:
         return {
             "error": "job input must include 'config_yaml': the full text "
-            "content of a train.yaml config. See src/runpod/scripts/submit_training_job.js."
+            "content of a train.yaml config. See src/runpod/model-training/scripts/submit_training_job.js."
         }
 
     try:

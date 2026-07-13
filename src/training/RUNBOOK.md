@@ -107,10 +107,11 @@ is yours, not NVIDIA's — there's no public source for that one; the copy in
 
 ## 2. Build and push the worker image (Docker Hub)
 
+Run from the **rapgenie repo root**. `DOCKERHUB_USERNAME` is read from the
+repo-root `.env` (see that file), not passed inline:
+
 ```bash
-cd rapgenie/src/runpod/scripts
-export DOCKERHUB_USERNAME=your-dockerhub-username
-node build_worker.js v1.0.0
+node src/runpod/model-training/scripts/build_worker.js v1.0.0
 ```
 
 No local smoke test before push right now — kept simple, same as no unit
@@ -164,18 +165,17 @@ first.
 
 ## 4. Submit a real training job
 
-```bash
-export RUNPOD_API_KEY=...          # from https://www.runpod.io/console/user/settings
-export RUNPOD_ENDPOINT_ID=...      # from step 3
+`RUNPOD_API_KEY` / `RUNPOD_ENDPOINT_ID` (from step 3) are read from the
+repo-root `.env`, not passed inline. Run from the **rapgenie repo root**:
 
-cd rapgenie/src/runpod/scripts
-node submit_training_job.js   # defaults to ../../configs/train.yaml, i.e. src/configs/train.yaml
+```bash
+node src/runpod/model-training/scripts/submit_training_job.js   # defaults to src/configs/train.yaml
 ```
 
 This prints a job id. Check on it:
 
 ```bash
-node check_job_status.js <job_id>
+node src/runpod/model-training/scripts/check_job_status.js <job_id>
 ```
 
 Status will move through `IN_QUEUE` → (worker cold-starts, can take a

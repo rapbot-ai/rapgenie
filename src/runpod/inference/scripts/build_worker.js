@@ -3,10 +3,10 @@
  * Builds the RunPod INFERENCE worker image, per RunPod's documented deploy
  * flow: https://docs.runpod.io/serverless/workers/deploy
  *
- * Mirrors src/runpod/scripts/build_worker.js (training's version) exactly,
- * just pointed at the inference Dockerfile and a different image name — this
- * is a separate endpoint, not the same image. See
- * src/runpod-inference/Dockerfile for why.
+ * Mirrors src/runpod/model-training/scripts/build_worker.js (training's
+ * version) exactly, just pointed at the inference Dockerfile and a different
+ * image name — this is a separate endpoint, not the same image. See
+ * ../Dockerfile for why.
  *
  * Usage:
  *   export DOCKERHUB_USERNAME=your-username
@@ -16,14 +16,17 @@
  * it builds, then prints the exact test/push commands so you can look at
  * the image before it leaves your machine and decide yourself when to push.
  *
- * Reuses execComm from ../../bash/bash.js — the same subprocess-spawning
+ * Reuses execComm from ../../../bash/bash.js — the same subprocess-spawning
  * helper rapgenie's own RADTTS inference calls already use — instead of
  * introducing a second way to shell out to a command.
  */
 
 const path = require('path')
-const { execComm } = require('../../bash/bash.js')
-require('dotenv').config()
+const { execComm } = require('../../../bash/bash.js')
+// Explicit path, not dotenv's default (cwd-relative) lookup — this way it
+// finds the repo-root .env regardless of which directory you run this
+// script from, instead of only working when you happen to be cd'd there.
+require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') })
 
 const { DOCKERHUB_USERNAME } = process.env
 const version = process.argv[2]
@@ -35,9 +38,9 @@ if (!version) {
   throw new Error('Usage: node build_worker.js <version-tag>, e.g. v1.0.0')
 }
 
-// scripts -> runpod-inference -> src -> rapgenie (repo root, the Docker build context)
-const repoRoot = path.resolve(__dirname, '../../..')
-const dockerfile = path.join(repoRoot, 'src/runpod-inference/Dockerfile')
+// scripts -> inference -> runpod -> src -> rapgenie (repo root, the Docker build context)
+const repoRoot = path.resolve(__dirname, '../../../..')
+const dockerfile = path.join(repoRoot, 'src/runpod/inference/Dockerfile')
 const image = `docker.io/${DOCKERHUB_USERNAME}/radtts-infer-worker:${version}`
 
 const buildDockerBuildCommand = () =>
@@ -56,7 +59,7 @@ const main = async () => {
   console.log('To push:')
   console.log(`  docker push ${image}`)
   console.log('')
-  console.log('Avoid :latest for production — see RUNBOOK.md for why.')
+  console.log('Avoid :latest for production — see src/training/RUNBOOK.md for why.')
 }
 
 if (require.main === module) {

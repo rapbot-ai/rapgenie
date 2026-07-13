@@ -4,9 +4,8 @@
  * Serverless endpoint via POST /run.
  * https://docs.runpod.io/serverless/endpoints/send-requests
  *
- * Usage:
- *   export RUNPOD_API_KEY=...       # from https://www.runpod.io/console/user/settings
- *   export RUNPOD_ENDPOINT_ID=...   # from the endpoint's page in the RunPod console
+ * Usage (RUNPOD_API_KEY / RUNPOD_ENDPOINT_ID come from the repo-root .env,
+ * not passed on the command line — see the dotenv.config() call below):
  *   node submit_training_job.js [path/to/train.yaml] [--resume-from model_600]
  *
  * Rewritten from bash on purpose: the original shelled out to `python3 -c
@@ -20,7 +19,10 @@ const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
 
-require('dotenv').config()
+// Explicit path, not dotenv's default (cwd-relative) lookup — this way it
+// always finds the repo-root .env regardless of which directory this script
+// is run from, instead of depending on the caller happening to be cd'd there.
+require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') })
 
 const { RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID } = process.env
 
@@ -39,8 +41,8 @@ if (resumeFlagIndex !== -1 && !resumeFrom) {
 }
 const positionalArgs = rawArgs.filter((_, i) => i !== resumeFlagIndex && i !== resumeFlagIndex + 1)
 
-// Default: scripts -> runpod -> src, then down into configs -> src/configs/train.yaml
-const defaultConfigPath = path.resolve(__dirname, '../../configs/train.yaml')
+// Default: scripts -> model-training -> runpod -> src, then down into configs -> src/configs/train.yaml
+const defaultConfigPath = path.resolve(__dirname, '../../../configs/train.yaml')
 const configPath = positionalArgs[0] || defaultConfigPath
 
 if (!fs.existsSync(configPath)) {

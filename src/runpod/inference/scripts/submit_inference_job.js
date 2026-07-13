@@ -16,10 +16,17 @@
  * against, copy-pasted from wherever you tracked the training run's output.
  */
 
-const axios = require('axios')
-require('dotenv').config()
+const path = require('path')
+const axios = require('axios');
+const e = require('cors');
+// Explicit path, not dotenv's default (cwd-relative) lookup — this way it
+// finds the repo-root .env regardless of which directory you run this
+// script from, instead of only working when you happen to be cd'd there.
+require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') })
 
 const { RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID } = process.env
+console.log('$$$ RUNPOD_API_KEY:', RUNPOD_API_KEY)
+console.log('$$$ RUNPOD_ENDPOINT_ID:', RUNPOD_ENDPOINT_ID)
 
 if (!RUNPOD_API_KEY) {
   throw new Error('Set RUNPOD_API_KEY in your environment')
@@ -35,13 +42,13 @@ const flagValue = (flag) => {
   return i !== -1 ? rawArgs[i + 1] : null
 }
 const consumedIndices = new Set()
-;['--checkpoint', '--speaker', '--tempo'].forEach((flag) => {
-  const i = rawArgs.indexOf(flag)
-  if (i !== -1) {
-    consumedIndices.add(i)
-    consumedIndices.add(i + 1)
-  }
-})
+  ;['--checkpoint', '--speaker', '--tempo'].forEach((flag) => {
+    const i = rawArgs.indexOf(flag)
+    if (i !== -1) {
+      consumedIndices.add(i)
+      consumedIndices.add(i + 1)
+    }
+  })
 const positionalArgs = rawArgs.filter((_, i) => !consumedIndices.has(i))
 
 const text = positionalArgs[0]
@@ -84,7 +91,7 @@ const submitJob = async () => {
 
   if (data.id) {
     console.log(`\nJob id: ${data.id}`)
-    console.log(`Check status with: node ../../runpod/scripts/check_job_status.js ${data.id}`)
+    console.log(`Check status with: node ../../model-training/scripts/check_job_status.js ${data.id}`)
   }
 }
 

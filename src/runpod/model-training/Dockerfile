@@ -1,16 +1,24 @@
 # RunPod Serverless worker image. Same pinned RADTTS fork and the same
-# training pipeline code as src/training/Dockerfile — this is the SAME
-# training logic, just wrapped for a different execution model: RunPod
-# provisions a GPU worker on-demand per job and bills per second, instead of
-# an always-on box. This is the "provider-aware GPU dispatch, workload-demand
-# matching" line from your resume, applied to this training job specifically.
+# training pipeline code as src/training/Dockerfile (the standalone
+# docker-run/torchrun path) — this is the SAME training logic, just wrapped
+# for a different execution model: RunPod provisions a GPU worker on-demand
+# per job and bills per second, instead of an always-on box. This is the
+# "provider-aware GPU dispatch, workload-demand matching" line from your
+# resume, applied to this training job specifically.
 #
-# Build from the rapgenie/ REPO ROOT, not from this src/runpod/ directory,
-# so it can COPY src/training, src/configs, and src/runpod/handler.py from
+# This Dockerfile lives under src/runpod/model-training/ (not alongside the
+# package at src/training/) because it, handler.py, and scripts/ are the
+# RunPod-specific deploy wrapper — none of them import `runpod` in the actual
+# training package, only here. The package itself (src/training/) stays
+# deployment-agnostic and gets COPYed in from its own top-level location.
+#
+# Build from the rapgenie/ REPO ROOT, not from this
+# src/runpod/model-training/ directory, so it can COPY src/training,
+# src/blob_storage, src/configs, and this directory's own handler.py from
 # here:
 #
 #   docker build --platform linux/amd64 \
-#     -f src/runpod/Dockerfile \
+#     -f src/runpod/model-training/Dockerfile \
 #     -t DOCKERHUB_USERNAME/radtts-train-worker:v1.0.0 \
 #     .
 #
@@ -24,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 python3-dev python3.10-dev libpython3.10-dev python3-pip git ffmpeg sox build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-# Same fork, same pinned commit, same reasoning as ../training/Dockerfile:
+# Same fork, same pinned commit, same reasoning as src/training/Dockerfile:
 # upstream NVIDIA/RADTTS's requirements.txt breaks on a clean install
 # (unpinned numpy/numba/llvmlite, setuptools>=81 dropping distutils,
 # matplotlib>=3.8 vs contourpy). Fixed once in rapbot-ai/radtts@a517713 —
@@ -69,13 +77,14 @@ RUN pip3 install --no-cache-dir "runpod~=1.7"
 
 # src/training -> /app/src/training (the "training" package, importable via
 # PYTHONPATH=/app/src as `training.X`, matching src/training/Dockerfile).
-# src/storage -> /app/src/storage: the blob-store client, factored out of
-# training/ because it's not training-specific — src/runpod-inference/
-# needs the exact same S3-download behavior for its checkpoint/vocoder.
+# src/blob_storage -> /app/src/blob_storage: the blob-store client, kept at
+# top level (not nested under either worker) because it's not RunPod-specific
+# — src/runpod/inference/ needs the exact same S3-download behavior for its
+# checkpoint/vocoder.
 COPY src/training ./src/training
-COPY src/storage ./src/storage
+COPY src/blob_storage ./src/blob_storage
 COPY src/configs/train.yaml ./configs/train.yaml
-COPY src/runpod/handler.py .
+COPY src/runpod/model-training/handler.py .
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src
