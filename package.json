@@ -9,9 +9,9 @@
     "pm2": "pm2 start ./src/express/express.js  --time --no-autorestart",
     "ngrok": "ngrok http 3020",
     "restart": "pm2 kill && npm run pm2 && pm2 logs",
-    "build:train-worker": "node src/runpod/model-training/scripts/build_worker.js",
-    "build:infer-worker": "node src/runpod/inference/scripts/build_worker.js",
-    "check:job-status": "node src/runpod/model-training/scripts/check_job_status.js",
+    "build:train": "node src/runpod/model-training/scripts/build_worker.js",
+    "build:infer": "node src/runpod/inference/scripts/build_worker.js",
+    "check:train-status": "node src/runpod/model-training/scripts/check_job_status.js",
     "submit:train-job": "node src/runpod/model-training/scripts/submit_training_job.js",
     "submit:infer-job": "node src/runpod/inference/scripts/submit_inference_job.js"
   },
