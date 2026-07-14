@@ -141,8 +141,8 @@ const submitJob = async () => {
 
   if (data.id) {
     console.log(`\nJob id: ${data.id}`)
-    console.log(`Check status with: npm run check:train-status -- ${data.id}`)
-    console.log(`Kill it with: npm run kill:train-job -- ${data.id}`)
+    console.log(`Check status with:\n\nnpm run check:train-status -- ${data.id}`)
+    console.log(`\n\n\nKill it with:\n\nnpm run kill:train-job -- ${data.id}`)
   }
 }
 
