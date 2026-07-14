@@ -1,4 +1,10 @@
-require('dotenv').config()
+const path = require('path')
+// Explicit path, not dotenv's default (cwd-relative) lookup — this file used
+// the cwd-relative default, unlike every other script in this repo
+// (submit_inference_job.js, check_job_status.js, etc.), which only worked
+// by coincidence because npm run dev/pm2 both launch it from repo root.
+// Fixing it here since /infer now depends on new required env vars below.
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') })
 const express = require('express')
 const bodyParser = require('body-parser');
 const CORS = require('cors');
@@ -25,75 +31,13 @@ app.get('/', async (_, res) => {
   return res.send('Hello world!')
 })
 
-app.post(`/infer`, async (req, res) => {
-  try {
-    const { inferenceBody, tempo = 1.5 } = req.body
-
-    if (!inferenceBody) {
-      throw new Error(`'inferenceBody' must be defined!`)
-    }
-
-    const jobId = v4()
-    const jobDir = `/home/ubuntu/jobs/${jobId}`
-    mkdirSync(jobDir)
-    const textInputFile = `${jobDir}/text-input.txt`
-
-    writeFileSync(textInputFile, inferenceBody)
-
-    const inferFunc = `../radtts/inference.py`
-    const radttsModelConfig = `/home/ubuntu/rapgenie/src/configs/config_ljs_dap.json`
-    const radttsModel = `../models/lupe-fiasco-radtts-model`
-    const vocoder = `../models/hifigan_libritts100360_generator0p5.pt`
-    const vocoderConfig = `../models/hifigan_22khz_config.json`
-    const speaker = `lupefiasco`
-    const speakerAttributes = `lupefiasco`
-    const speakerText = `lupefiasco`
-    const radttsInferCommand = [
-      inferFunc,
-      `-r`,
-      radttsModel,
-      `-c`,
-      radttsModelConfig,
-      `-v`,
-      vocoder,
-      `-k`,
-      vocoderConfig,
-      `-t`,
-      textInputFile,
-      `-s`,
-      speaker,
-      `--speaker_attributes`,
-      speakerAttributes,
-      `--speaker_text`,
-      speakerText,
-      `-o`,
-      jobDir,
-      `--token_dur_scaling`,
-      1.5
-    ]
-    console.log('radttsInferCommand:', radttsInferCommand.join(` \\\n`))
-
-    await execPythonComm(radttsInferCommand, { printLogs: true })
-
-    const [inferOutput] = readdirSync(jobDir).filter(file => file.split('.').pop() === 'wav')
-    console.log('wavPath:', `${jobDir}/${inferOutput}`)
-    const wavContent = createReadStream(`${jobDir}/${inferOutput}`)
-    await uploadToS3(`${jobId}.wav`, 'rapbot-rapgenie-outputs', wavContent, 'audio/wav')
-    const params = {
-      Bucket: 'rapbot-rapgenie-outputs',
-      Key: `${jobId}.wav`
-    }
-    const wavSignedUrl = s3Client.getSignedUrl('getObject', params)
-
-    const text = inferenceBody
-    rmSync(jobDir, { recursive: true, force: true });
-    return res.send({ wavSignedUrl, text })
-  } catch (error) {
-    console.log('error:', error)
-    const stringifiedError = JSON.stringify(error, Object.getOwnPropertyNames(error))
-    res.status(500).send(stringifiedError)
-  }
-})
+// NOTE: rapgenie no longer serves its own /infer endpoint. That logic now
+// lives in the rapbot-mobile repo (pages/api/rapgenie/infer.js +
+// pages/api/rapgenie/infer/status/[jobId].js), which calls this repo's
+// RunPod Serverless inference worker (src/runpod/inference/) directly.
+// rapgenie is training/inference code only now, not an app of its own — see
+// git history for the removed RunPod-backed /infer/webhook/status routes
+// that briefly lived here before moving to rapbot-mobile.
 
 app.post(`/infer-typecast`, async (req, res) => {
   try {
