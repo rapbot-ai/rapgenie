@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import os
 import subprocess
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -49,14 +50,32 @@ class StorageConfig:
 
 @dataclass(frozen=True)
 class ResumeConfig:
+    """run_id here is the ORIGINAL run's id you're reconnecting to — not
+    recomputed, carried forward explicitly. PipelineConfig.run_id used to be
+    pure name+config_hash+git_commit, which was fine for resume (same config
+    -> same id -> same W&B run/checkpoint prefix) but meant two unrelated
+    FRESH runs with identical config on the same commit collided too: same
+    run_id, so the second run's W&B logs got spliced into the first run's
+    history and its checkpoints could overwrite the first run's in S3 — no
+    error, just silently merged/lost data. Fresh runs now get a random
+    per-launch suffix (PipelineConfig.instance_id) instead of a deterministic
+    one, so resuming has to say explicitly which prior run_id it means."""
+
     enabled: bool
     from_checkpoint: str | None
     override_iteration: int | None
+    run_id: str | None = None
 
     def __post_init__(self) -> None:
         if self.enabled and not self.from_checkpoint:
             raise ConfigError(
                 "resume.enabled=true requires resume.from_checkpoint to be set"
+            )
+        if self.enabled and not self.run_id:
+            raise ConfigError(
+                "resume.enabled=true requires resume.run_id to be set (the "
+                "original run's id, e.g. lupefiasco-radtts-warmstart-v5-86f7089a5b26-77e3051 "
+                "— read it off the W&B run you're resuming)"
             )
 
 
@@ -120,6 +139,12 @@ class PipelineConfig:
     train: TrainConfig
     wandb: WandbConfig
     raw: dict[str, Any] = field(repr=False)
+    # Set once per PipelineConfig (i.e. once per process launch), never
+    # recomputed — this is what makes two fresh runs with identical config
+    # get different run_ids instead of colliding. Irrelevant when resuming
+    # (run_id comes from resume.run_id instead), but still generated either
+    # way since it's cheap and unused fields are simpler than conditional ones.
+    instance_id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
 
     @property
     def config_hash(self) -> str:
@@ -154,11 +179,22 @@ class PipelineConfig:
 
     @property
     def run_id(self) -> str:
-        """Stable, human-diffable identifier for this run: name + config hash
-        + commit. This is what gets logged to W&B and stamped into the
-        checkpoint prefix, so 'what config trained model_1400' is always
-        answerable."""
-        return f"{self.run_name}-{self.config_hash}-{self.git_commit}"
+        """Resuming: reuse the exact id of the run being resumed
+        (resume.run_id), carried in from outside — never recomputed, since
+        the whole point of resuming is reconnecting to that specific prior
+        run's W&B history and checkpoint prefix.
+
+        Fresh run (not resuming): name + config hash + commit + a random
+        instance_id. The first three alone are reproducible from the config
+        file, which is exactly the bug — rerun the same config on the same
+        commit and you'd get the same run_id as a previous, unrelated run,
+        silently splicing your new W&B logs into its history and potentially
+        overwriting its S3 checkpoints. instance_id makes every fresh launch
+        unique regardless of config content."""
+        if self.resume.enabled:
+            assert self.resume.run_id is not None  # enforced by ResumeConfig.__post_init__
+            return self.resume.run_id
+        return f"{self.run_name}-{self.config_hash}-{self.git_commit}-{self.instance_id}"
 
 
 def load_config(path: str | Path, resume: ResumeConfig | None = None) -> PipelineConfig:
@@ -193,7 +229,7 @@ def load_config(path: str | Path, resume: ResumeConfig | None = None) -> Pipelin
         run_name=run["name"],
         seed=run["seed"],
         storage=storage,
-        resume=resume if resume is not None else ResumeConfig(enabled=False, from_checkpoint=None, override_iteration=None),
+        resume=resume if resume is not None else ResumeConfig(enabled=False, from_checkpoint=None, override_iteration=None, run_id=None),
         retry=retry,
         train=train,
         wandb=wandb,

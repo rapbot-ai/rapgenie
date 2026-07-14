@@ -10,7 +10,8 @@ gets built and sent):
       "input": {
         "config_yaml": "<the full literal text of a src/configs/train.yaml file>",
         "resume": false,
-        "resume_from": null
+        "resume_from": null,
+        "resume_run_id": null
       }
     }
 
@@ -20,10 +21,19 @@ submit is exactly what gets hashed into config_hash / run_id by
 training/config.py — no risk of "the config on the worker doesn't match the
 config I meant to submit" drift.
 
-'resume'/'resume_from' are deliberately kept out of that string. Resume is a
-per-job decision made at submit time, never a property of a committed
-train.yaml — so it travels as its own top-level input field and is passed
-straight into training.train.run() as the sole source of resume state.
+'resume'/'resume_from'/'resume_run_id' are deliberately kept out of that
+string. Resume is a per-job decision made at submit time, never a property
+of a committed train.yaml — so it travels as its own top-level input fields
+and is passed straight into training.train.run() as the sole source of
+resume state.
+
+'resume_run_id' must be the exact run_id of the run being resumed (e.g.
+lupefiasco-radtts-warmstart-v5-86f7089a5b26-77e3051, visible in the W&B UI
+or that run's own logs). Fresh (non-resumed) runs now get a random
+per-launch suffix baked into their run_id specifically so that two unrelated
+fresh runs with identical config never collide — which means resuming can no
+longer just recompute the original run's id from the config, it has to be
+told explicitly which run it's reconnecting to.
 """
 
 from __future__ import annotations
@@ -52,6 +62,7 @@ def handler(job: dict) -> dict:
             enabled=job_input.get("resume", False),
             from_checkpoint=job_input.get("resume_from"),
             override_iteration=job_input.get("resume_override_iteration"),
+            run_id=job_input.get("resume_run_id"),
         )
     except ConfigError as e:
         return {"error": f"invalid resume fields in job input: {e}"}

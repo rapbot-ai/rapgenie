@@ -353,12 +353,18 @@ def _init_wandb(cfg: PipelineConfig) -> None:
         # continue the SAME W&B run instead of silently creating a second,
         # disconnected one under the same display name — name alone isn't
         # unique across separate wandb.init() calls, id is. run_id is
-        # already the one deterministic identity for a run everywhere else
-        # in this codebase (checkpoint S3 prefix, logging), so this reuses
-        # it rather than inventing a second identifier.
+        # already the one identity for a run everywhere else in this
+        # codebase (checkpoint S3 prefix, logging), so this reuses it rather
+        # than inventing a second identifier.
         id=cfg.run_id,
         name=cfg.run_id,
-        resume="allow",
+        # "allow" only when actually resuming. cfg.run_id is now unique per
+        # fresh launch (see PipelineConfig.instance_id), so a fresh run
+        # colliding with an existing id should be effectively impossible —
+        # but if it somehow did happen, "never" makes W&B fail loudly instead
+        # of silently splicing this run's logs into an unrelated one's
+        # history, which is the exact bug this whole change exists to kill.
+        resume="allow" if cfg.resume.enabled else "never",
         tags=cfg.wandb.tags,
         config=cfg.raw,
     )
