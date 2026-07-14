@@ -16,7 +16,8 @@
     "kill:train-job": "node src/runpod/scripts/kill_job.js --endpoint train",
     "kill:infer-job": "node src/runpod/scripts/kill_job.js --endpoint infer",
     "submit:train-job": "node src/runpod/model-training/scripts/submit_training_job.js",
-    "submit:infer-job": "node src/runpod/inference/scripts/submit_inference_job.js"
+    "submit:infer-job": "node src/runpod/inference/scripts/submit_inference_job.js",
+    "wandb:history": "python3 src/training/scripts/download_run_history.py"
   },
   "author": "",
   "license": "ISC",
