@@ -16,7 +16,8 @@
     "kill:train-job": "node src/runpod/scripts/kill_job.js --endpoint train",
     "kill:infer-job": "node src/runpod/scripts/kill_job.js --endpoint infer",
     "submit:train-job": "node src/runpod/model-training/scripts/submit_training_job.js",
-    "submit:infer-job": "node src/runpod/inference/scripts/submit_inference_job.js"
+    "submit:infer-job": "node src/runpod/inference/scripts/submit_inference_job.js",
+    "wandb:history": "node src/training/scripts/download_run_history.js"
   },
   "author": "",
   "license": "ISC",
@@ -27,6 +28,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "js-yaml": "^4.1.0",
     "openai": "^3.1.0",
     "uuid": "^9.0.0"
   }
