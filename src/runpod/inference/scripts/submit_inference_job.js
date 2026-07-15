@@ -107,8 +107,8 @@ const submitJob = async () => {
 
   if (data.id) {
     console.log(`\nJob id: ${data.id}`)
-    console.log(`Check status with:\nnpm run check:infer-status -- ${data.id}`)
-    console.log(`\n\nKill it with:\nnpm run kill:infer-job -- ${data.id}`)
+    console.log(`\nCheck status with:\nnpm run check:infer-status -- ${data.id}`)
+    console.log(`\nKill it with:\nnpm run kill:infer-job -- ${data.id}\n`)
   }
 }
 
