@@ -1,5 +1,15 @@
 RapGenie: An end-to-end solution for synthesizing rap songs. Includes TTS voice generation and GPT lyrics generation.
 
+# DOCKER IMAGES:
+
+All Dockerfiles are colocated with the code they package (not at repo root) and all build from the **repo root** as context: `docker build --platform linux/amd64 -f <dockerfile-path> -t <tag> .`
+
+| Image | Dockerfile | Deploy target(s) | Entrypoint |
+| --- | --- | --- | --- |
+| `radtts-infer-worker` | `src/runpod/inference/Dockerfile` | **Two modes, one image.** (1) RunPod Serverless inference endpoint: default CMD → `handler.py`. (2) Always-on GPU Pod for the manual pool (called by rapbot-mobile's `gpu-dispatcher`): Pod start-command override → `python3 -u /app/server.py` (HTTP, port 8000; set `AUTH_TOKEN`) | `handler.py` (default) / `server.py` (override) |
+| `radtts-train` (RunPod) | `src/runpod/model-training/Dockerfile` | RunPod Serverless training endpoint | its `handler.py` |
+| `radtts-train` (plain) | `src/training/Dockerfile` | Plain `docker run`/torchrun on any rented GPU box (non-RunPod path) | `training.train` |
+
 # SYNTHESIZED RAP:
 
 ## VOICE:

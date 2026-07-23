@@ -64,11 +64,19 @@ RUN pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cu1
 RUN grep -v -E '^(torch|torchaudio|jupyter)$' /opt/RADTTS/requirements.txt > /tmp/radtts-requirements.txt && \
     pip3 install --no-cache-dir -r /tmp/radtts-requirements.txt
 
-COPY src/runpod/inference/requirements.txt ./requirements.txt
+# NOTE: this previously COPY'd src/runpod/inference/requirements.txt, which
+# no longer exists — the inference package's requirements live with the
+# package itself at src/inference/requirements.txt (just boto3).
+COPY src/inference/requirements.txt ./requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # The runpod SDK itself — not needed by the plain docker-run path, only this one.
 RUN pip3 install --no-cache-dir "runpod~=1.7"
+
+# HTTP server deps for server.py (the always-on Pod mode, see below).
+# handler.py never imports these — a few MB of dead weight in serverless,
+# accepted so both modes ship in one image and can't drift apart.
+RUN pip3 install --no-cache-dir "fastapi==0.111.*" "uvicorn[standard]==0.30.*"
 
 # src/inference -> /app/src/inference (the "inference" package), src/blob_storage
 # -> /app/src/blob_storage (shared blob-store client, also used by training —
@@ -84,7 +92,20 @@ COPY src/blob_storage ./src/blob_storage
 # SPEAKER_ROSTER_DIR in src/runpod/inference/infer.py.
 COPY src/configs/speaker_roster.txt ./configs/speaker_roster.txt
 
+# ONE image, TWO run modes — the mode is picked by each deploy target's
+# start command, never by editing this file:
+#
+#   RunPod Serverless endpoint: no start command configured -> falls through
+#     to the CMD below -> handler.py (queue-based worker, unchanged).
+#   Always-on RunPod Pod: container start command override set once in the
+#     Pod's config -> `python3 -u /app/server.py` -> plain HTTP server on
+#     port 8000 (PORT env to change), called by rapbot-mobile's
+#     gpu-dispatcher. Set AUTH_TOKEN on the Pod to require a bearer token
+#     on /infer (the Pod proxy URL is publicly reachable).
+#
+# Both wrap the same inference.infer.run(); see server.py's docstring.
 COPY src/runpod/inference/handler.py .
+COPY src/runpod/inference/server.py .
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src
