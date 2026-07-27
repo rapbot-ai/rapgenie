@@ -140,9 +140,9 @@ const submitJob = async () => {
   console.log(JSON.stringify(data, null, 2))
 
   if (data.id) {
-    console.log(`\nJob id: ${data.id}`)
-    console.log(`\nCheck status with:\n\nnpm run check:train-status -- ${data.id}`)
-    console.log(`\n\nKill it with:\n\nnpm run kill:train-job -- ${data.id}`)
+    console.log(`\nJob id:\n${data.id}`)
+    console.log(`\nCheck status with:\nnpm run check:train-status -- ${data.id}`)
+    console.log(`\nKill it with:\nnpm run kill:train-job -- ${data.id}\n`)
   }
 }
 
