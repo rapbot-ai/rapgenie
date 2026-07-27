@@ -110,6 +110,31 @@ class WandbConfig:
 
 
 @dataclass(frozen=True)
+class EarlyStoppingConfig:
+    """Stop training when the monitored validation metric hasn't improved
+    (lower is better — everything RADTTS prints on its 'Validation loss:'
+    line is a loss) for patience_steps steps. Enforced entirely by the
+    wrapper's stdout parsing in train.py, never by the vendored RADTTS loop.
+    Optional section with enabled=False defaults so existing configs load
+    unchanged — same pattern as WandbConfig."""
+
+    enabled: bool = False
+    monitor: str = "loss_mel"  # key as printed by RADTTS, i.e. W&B's val/<monitor>
+    patience_steps: int = 2000
+    min_steps: int = 1000  # never stop before this many steps, however bad val looks
+
+    def __post_init__(self) -> None:
+        if not self.enabled:
+            return
+        if not self.monitor:
+            raise ConfigError("train.early_stopping.monitor must be a non-empty metric key")
+        if self.patience_steps <= 0:
+            raise ConfigError("train.early_stopping.patience_steps must be > 0")
+        if self.min_steps < 0:
+            raise ConfigError("train.early_stopping.min_steps must be >= 0")
+
+
+@dataclass(frozen=True)
 class TrainConfig:
     epochs: int
     learning_rate: float
@@ -121,6 +146,7 @@ class TrainConfig:
     iters_per_checkpoint: int
     unfreeze_modules: str
     loss_weights: dict[str, float]
+    early_stopping: EarlyStoppingConfig = field(default_factory=EarlyStoppingConfig)
 
     def __post_init__(self) -> None:
         if self.batch_size <= 0:
@@ -211,7 +237,14 @@ def load_config(path: str | Path, resume: ResumeConfig | None = None) -> Pipelin
         run = raw["run"]
         storage = StorageConfig(**run["storage"])
         retry = RetryConfig(**raw["retry"])
-        train = TrainConfig(**raw["train"])
+        # early_stopping is a nested optional block inside train:, so it has
+        # to be popped out before TrainConfig(**...) — otherwise a config
+        # that sets it would blow up with an unexpected-keyword TypeError.
+        # "or {}" guards `early_stopping:` present but empty (parses as
+        # None), same as the tracking.wandb handling below.
+        train_raw = dict(raw["train"])
+        early_stopping = EarlyStoppingConfig(**(train_raw.pop("early_stopping", None) or {}))
+        train = TrainConfig(early_stopping=early_stopping, **train_raw)
         # tracking.wandb is optional — omit the whole "tracking" key, or
         # "wandb" under it, and you get WandbConfig()'s defaults
         # (enabled=False). "or {}" guards against `tracking:` present in the

@@ -33,7 +33,7 @@ import threading
 import time
 from pathlib import Path
 
-from training.config import ConfigError, PipelineConfig, ResumeConfig, load_config
+from training.config import ConfigError, EarlyStoppingConfig, PipelineConfig, ResumeConfig, load_config
 from training.data_validation import DatasetValidationError, assert_dataset_ready
 from blob_storage.blob_storage import build_blob_store
 
@@ -225,7 +225,12 @@ def _parse_val_line(line: str) -> dict[str, float] | None:
     return metrics
 
 
-def _run_training_subprocess(cmd: list[str], cwd: str, wandb_enabled: bool) -> int:
+def _run_training_subprocess(
+    cmd: list[str],
+    cwd: str,
+    wandb_enabled: bool,
+    early_stopping: EarlyStoppingConfig | None = None,
+) -> int:
     """Runs the RADTTS training subprocess, streaming its stdout back out
     exactly as `subprocess.run(cmd, cwd=cwd)` (inherited stdio) did before —
     RunPod's Logs tab looks identical — while also parsing each
@@ -233,12 +238,25 @@ def _run_training_subprocess(cmd: list[str], cwd: str, wandb_enabled: bool) -> i
     W&B when enabled. Never touches vendored RADTTS source; this only reads
     what it already writes to stdout.
 
+    Early stopping rides the same stdout parsing: when the monitored key on
+    RADTTS's 'Validation loss:' line hasn't improved in patience_steps
+    steps (and we're past min_steps), the subprocess is terminated and this
+    returns 0 — a deliberate stop is a SUCCESSFUL run, not a failure, so it
+    must not look like a crash to retry logic or wandb.finish(exit_code=).
+    Killing mid-iteration is safe: the checkpoint watcher has already
+    uploaded every checkpoint written so far (including the best one), and
+    the at-most-<iters_per_checkpoint iterations lost past the last
+    checkpoint are all past-peak by definition. Motivating data: the v5 run
+    bottomed every val loss by step 600 and burned 10k more steps anyway.
+
     stderr is merged into stdout (rather than kept as a second inherited
     stream) so there's one ordered pipe to read — the tradeoff is that
     stdout/stderr interleaving is no longer guaranteed byte-for-byte in
     original OS ordering, which doesn't matter for a training log."""
     if wandb_enabled:
         import wandb
+
+    es = early_stopping if (early_stopping is not None and early_stopping.enabled) else None
 
     proc = subprocess.Popen(
         cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
@@ -250,22 +268,66 @@ def _run_training_subprocess(cmd: list[str], cwd: str, wandb_enabled: bool) -> i
     # on, so the last iteration seen from _parse_train_line is always the
     # right step to attribute them to.
     last_iteration: int | None = None
+    best_value: float | None = None
+    best_step: int | None = None
+    early_stopped = False
     for line in proc.stdout:
         line = line.rstrip("\n")
         print(line, flush=True)
-        if not wandb_enabled:
+        # Parsing used to be skipped entirely when W&B was off; early
+        # stopping needs it regardless, so the W&B guard now sits on the
+        # log calls instead of the parse.
+        if not wandb_enabled and es is None:
             continue
         parsed = _parse_train_line(line)
         if parsed is not None:
             iteration, metrics = parsed
             last_iteration = iteration
-            wandb.log({f"train/{k}": v for k, v in metrics.items()}, step=iteration)
+            if wandb_enabled:
+                wandb.log({f"train/{k}": v for k, v in metrics.items()}, step=iteration)
             continue
         val_metrics = _parse_val_line(line)
         if val_metrics:
             if last_iteration is None:
                 continue  # shouldn't happen (validation always follows an iter line) but don't crash the run over a log-parsing edge case
-            wandb.log({f"val/{k}": v for k, v in val_metrics.items()}, step=last_iteration)
+            if wandb_enabled:
+                wandb.log({f"val/{k}": v for k, v in val_metrics.items()}, step=last_iteration)
+            if es is None:
+                continue
+            value = val_metrics.get(es.monitor)
+            if value is None:
+                continue  # monitored key absent from this val line — config typo or RADTTS change; don't stop a run over it
+            if best_value is None or value < best_value:  # lower is better: everything on this line is a loss
+                best_value, best_step = value, last_iteration
+            elif last_iteration - best_step >= es.patience_steps and last_iteration >= es.min_steps:
+                early_stopped = True
+                msg = (
+                    f"EARLY STOP at step {last_iteration}: no val/{es.monitor} improvement "
+                    f"in {last_iteration - best_step} steps "
+                    f"(best {best_value:.4f} at step {best_step}; patience {es.patience_steps})"
+                )
+                logger.info(msg)
+                print(msg, flush=True)  # also into the RunPod log stream, next to RADTTS's own output
+                if wandb_enabled:
+                    wandb.run.summary["early_stop/triggered"] = True
+                    wandb.run.summary["early_stop/step"] = last_iteration
+                    wandb.run.summary["early_stop/best_step"] = best_step
+                    wandb.run.summary[f"early_stop/best_{es.monitor}"] = best_value
+                proc.terminate()
+                break
+
+    if early_stopped:
+        # SIGTERM first; if RADTTS doesn't die within the grace period
+        # (e.g. wedged in a CUDA call), escalate. Either way this is a
+        # deliberate, successful outcome — return 0, not the subprocess's
+        # signal-death code.
+        try:
+            proc.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        return 0
+
     proc.wait()
     return proc.returncode
 
@@ -378,7 +440,12 @@ def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
     # from."
     returncode = 1
     try:
-        returncode = _run_training_subprocess(cmd, cwd=str(RADTTS_REPO), wandb_enabled=cfg.wandb.enabled)
+        returncode = _run_training_subprocess(
+            cmd,
+            cwd=str(RADTTS_REPO),
+            wandb_enabled=cfg.wandb.enabled,
+            early_stopping=cfg.train.early_stopping,
+        )
     finally:
         stop_watcher.set()
         watcher.join(timeout=120)  # give the final sweep time to upload whatever's left

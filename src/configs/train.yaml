@@ -56,6 +56,22 @@ train:
   grad_clip_val: 1.0
   iters_per_checkpoint: 200
   unfreeze_modules: all
+  # Kill the run when the monitored val metric stops improving. Motivated by
+  # the v5 run: every val loss bottomed at steps 200-600, then degraded
+  # monotonically to step 11000 — ~90% of the GPU time bought nothing.
+  # Enforced by the wrapper (src/training/train.py) parsing RADTTS's own
+  # "Validation loss:" stdout lines — vendored RADTTS is not modified.
+  # `monitor` is the key as RADTTS prints it (surfaces in W&B as val/<monitor>).
+  # Stopping is only evaluated when a val line appears (every
+  # iters_per_checkpoint iters), so patience effectively rounds up to a
+  # checkpoint boundary. Deliberately conservative until the listen test
+  # confirms val loss tracks perceptual quality — don't tighten patience
+  # before then.
+  early_stopping:
+    enabled: true
+    monitor: loss_mel
+    patience_steps: 2000
+    min_steps: 1000
   loss_weights:
     blank_logprob: -1
     ctc_loss_weight: 0.1
