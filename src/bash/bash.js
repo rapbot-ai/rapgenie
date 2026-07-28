@@ -13,8 +13,8 @@ const execComm = (comm, opts = {}, logFileName) => {
       if (needsData) {
         resolve(data.toString())
       }
-      printLogs && console.log('### data:', data)
-      saveLogs && appendFileSync(`./output/bash/${logFileName}.txt`, JSON.stringify(data))
+      printLogs && console.log('### data:', data.toString())
+      saveLogs && appendFileSync(`./output/bash/${logFileName}.txt`, JSON.stringify(data.toString()))
     });
 
     terminal.on('exit', async (code) => {
