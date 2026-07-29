@@ -1,4 +1,4 @@
-"""Plain HTTP server — wraps inference.infer.run() as a synchronous request.
+"""Plain HTTP server — wraps inference.infer.run() as submit + poll.
 
 The second front door on the same image as handler.py (see ./Dockerfile):
 the RunPod Serverless endpoint uses the image's default CMD (handler.py),
@@ -12,32 +12,49 @@ Deliberately dumb on purpose:
 - No queue. Queueing/retry/assignment is the gpu-dispatcher's job (in the
   rapbot-mobile repo). This server does one job at a time and says "busy"
   (503) if asked to do two — the dispatcher should never let that happen.
-- Synchronous /infer. The dispatcher holds the request open and measures
-  executionTime itself; no callback/webhook machinery on the Pod.
+- ASYNC /infer (v1.1.1, changed from synchronous): POST /infer validates,
+  kicks the inference off on a background thread, and answers 202 with an
+  inferJobId immediately; the dispatcher then polls GET /result/<id>.
+  The sync version held the HTTP request open for the whole inference —
+  but Pod traffic rides https://<podId>-<port>.proxy.runpod.net, which is
+  Cloudflare-fronted, and Cloudflare kills any request that stays quiet
+  for ~100s with a 524 (seen in prod 2026-07-29: worker finished fine at
+  125s, dispatcher got a 524 at ~100s, job reported failed). Submit+poll
+  keeps every HTTP exchange sub-second, so inference duration is
+  unbounded. Must be paired with the matching dispatcher (attemptDispatch
+  submit+poll) in rapbot-mobile.
 
 Endpoints:
 
-    GET  /health  -> 200 {"status": "ok", "busy": <bool>}
-    POST /infer   -> body is the same shape as the serverless job "input"
-                     (see handler.py's docstring for the field reference):
-                     200 {"wavSignedUrl": ..., "text": ...}
-                     400 {"error": ...}   validation / ConfigError
-                     401 {"error": ...}   bad or missing bearer token
-                     503 {"error": ...}   GPU already running a job
-                     500 {"error": ...}   inference raised
+    GET  /health            -> 200 {"status": "ok", "busy": <bool>}
+    POST /infer             -> body is the same shape as the serverless job
+                               "input" (see handler.py's docstring):
+                               202 {"inferJobId": ...}   accepted, running
+                               400 {"error": ...}   validation / ConfigError
+                               401 {"error": ...}   bad or missing bearer token
+                               503 {"error": ...}   GPU already running a job
+    GET  /result/<id>       -> 200 {"status": "RUNNING"}
+                               200 {"status": "COMPLETED", "wavSignedUrl": ..., "text": ...}
+                               200 {"status": "FAILED", "error": ...}
+                               401 {"error": ...}   bad or missing bearer token
+                               404 {"error": ...}   unknown id (e.g. the
+                                   server restarted and lost in-memory
+                                   state — the dispatcher treats this as a
+                                   worker failure and retries elsewhere)
 
-Auth: the Pod's proxy URL (https://<podId>-<port>.proxy.runpod.net) is
-publicly reachable, and this endpoint triggers paid GPU work plus S3 reads/
-writes — so if the AUTH_TOKEN env var is set on the Pod, /infer requires a
-matching `Authorization: Bearer <token>` header. /health stays open (it
-leaks nothing and Batch 2's dispatcher health checks shouldn't need a
-secret to ask "are you alive?").
+Auth: the Pod's proxy URL is publicly reachable, and these endpoints
+trigger paid GPU work plus S3 reads/writes — so if the AUTH_TOKEN env var
+is set on the Pod, /infer AND /result require a matching
+`Authorization: Bearer <token>` header. /health stays open (it leaks
+nothing and Batch 2's dispatcher health checks shouldn't need a secret to
+ask "are you alive?").
 """
 
 from __future__ import annotations
 
 import os
 import threading
+import uuid
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -54,6 +71,44 @@ app = FastAPI()
 # would make the dispatcher's busy-tracking wrong.
 _gpu_lock = threading.Lock()
 
+# In-memory only, by design: results die with the Pod, matching the fleet's
+# "worker registry is transient, S3/pg-boss are the only durable pieces"
+# rule. A dispatcher polling for an id this dict doesn't know gets a 404
+# and treats it as a worker failure. Pruned to the newest few entries —
+# one-job-at-a-time means this never meaningfully grows, but a long-lived
+# Pod shouldn't leak memory either.
+_results: dict[str, dict] = {}
+_results_order: list[str] = []
+_RESULTS_KEPT = 20
+
+
+def _store_result(infer_job_id: str, result: dict) -> None:
+    _results[infer_job_id] = result
+    if infer_job_id not in _results_order:
+        _results_order.append(infer_job_id)
+    while len(_results_order) > _RESULTS_KEPT:
+        _results.pop(_results_order.pop(0), None)
+
+
+def _authorized(request: Request) -> bool:
+    auth_token = os.environ.get("AUTH_TOKEN")
+    if not auth_token:
+        return True
+    return request.headers.get("authorization") == f"Bearer {auth_token}"
+
+
+def _run_job(infer_job_id: str, cfg: InferenceConfig) -> None:
+    """Background-thread body. Owns releasing the GPU lock (acquired by
+    /infer before the thread starts, so the busy check and the work are
+    one atomic claim)."""
+    try:
+        wav_signed_url = run_inference(cfg)
+        _store_result(infer_job_id, {"status": "COMPLETED", "wavSignedUrl": wav_signed_url, "text": cfg.text})
+    except Exception as e:  # noqa: BLE001 - deliberately broad: report, don't crash the worker
+        _store_result(infer_job_id, {"status": "FAILED", "error": f"inference run raised an exception: {e}"})
+    finally:
+        _gpu_lock.release()
+
 
 @app.get("/health")
 def health() -> dict:
@@ -62,10 +117,8 @@ def health() -> dict:
 
 @app.post("/infer")
 def infer(body: dict, request: Request) -> JSONResponse:
-    auth_token = os.environ.get("AUTH_TOKEN")
-    if auth_token:
-        if request.headers.get("authorization") != f"Bearer {auth_token}":
-            return JSONResponse(status_code=401, content={"error": "missing or invalid bearer token"})
+    if not _authorized(request):
+        return JSONResponse(status_code=401, content={"error": "missing or invalid bearer token"})
 
     # Same validation and error messages as handler.py, so the dispatcher
     # and the serverless path return interchangeable shapes downstream.
@@ -107,14 +160,23 @@ def infer(body: dict, request: Request) -> JSONResponse:
             status_code=503,
             content={"error": "worker is busy with another inference job"},
         )
-    try:
-        wav_signed_url = run_inference(cfg)
-    except Exception as e:  # noqa: BLE001 - deliberately broad: report, don't crash the worker
-        return JSONResponse(status_code=500, content={"error": f"inference run raised an exception: {e}"})
-    finally:
-        _gpu_lock.release()
 
-    return JSONResponse(status_code=200, content={"wavSignedUrl": wav_signed_url, "text": cfg.text})
+    infer_job_id = uuid.uuid4().hex
+    _store_result(infer_job_id, {"status": "RUNNING"})
+    threading.Thread(target=_run_job, args=(infer_job_id, cfg), daemon=True).start()
+
+    return JSONResponse(status_code=202, content={"inferJobId": infer_job_id})
+
+
+@app.get("/result/{infer_job_id}")
+def result(infer_job_id: str, request: Request) -> JSONResponse:
+    if not _authorized(request):
+        return JSONResponse(status_code=401, content={"error": "missing or invalid bearer token"})
+
+    stored = _results.get(infer_job_id)
+    if stored is None:
+        return JSONResponse(status_code=404, content={"error": f"unknown inferJobId {infer_job_id}"})
+    return JSONResponse(status_code=200, content=stored)
 
 
 if __name__ == "__main__":
