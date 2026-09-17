@@ -1,41 +1,3 @@
-"""RunPod Serverless handler — wraps training.train.run() as a queue-based job.
-
-Follows RunPod's documented handler pattern (runpod.serverless.start with a
-handler function reading job["input"]): https://docs.runpod.io/serverless/workers/handler-functions
-
-Job input shape (see src/runpod/model-training/scripts/submit_training_job.js for how this
-gets built and sent):
-
-    {
-      "input": {
-        "config_yaml": "<the full literal text of a src/configs/train.yaml file>",
-        "resume": false,
-        "resume_from": null,
-        "resume_run_id": null
-      }
-    }
-
-Why ship the whole config as a string instead of just an S3 key or a config
-name: it keeps the submitted job self-contained and guarantees whatever you
-submit is exactly what gets hashed into config_hash / run_id by
-training/config.py — no risk of "the config on the worker doesn't match the
-config I meant to submit" drift.
-
-'resume'/'resume_from'/'resume_run_id' are deliberately kept out of that
-string. Resume is a per-job decision made at submit time, never a property
-of a committed train.yaml — so it travels as its own top-level input fields
-and is passed straight into training.train.run() as the sole source of
-resume state.
-
-'resume_run_id' must be the exact run_id of the run being resumed (e.g.
-lupefiasco-radtts-warmstart-v5-86f7089a5b26-77e3051, visible in the W&B UI
-or that run's own logs). Fresh (non-resumed) runs now get a random
-per-launch suffix baked into their run_id specifically so that two unrelated
-fresh runs with identical config never collide — which means resuming can no
-longer just recompute the original run's id from the config, it has to be
-told explicitly which run it's reconnecting to.
-"""
-
 from __future__ import annotations
 
 import tempfile
@@ -73,8 +35,9 @@ def handler(job: dict) -> dict:
 
     try:
         runpod.serverless.progress_update(job, "config validated, starting training")
+        # WALKTHROUGH 2a: the handler calls run() for each job
         exit_code = run_training(config_path, resume=resume)
-    except Exception as e:  # noqa: BLE001 - deliberately broad: report, don't crash the worker
+    except Exception as e:
         return {"error": f"training run raised an exception: {e}"}
     finally:
         config_path.unlink(missing_ok=True)
@@ -85,4 +48,5 @@ def handler(job: dict) -> dict:
     return {"status": "completed"}
 
 
+# WALKTHROUGH 4a: register the handler with RunPod
 runpod.serverless.start({"handler": handler})
