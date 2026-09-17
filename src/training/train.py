@@ -96,7 +96,6 @@ def build_train_command(
         "train_config.vocoder_checkpoint_path": str(vocoder_ckpt),
     }
     if cfg.resume.enabled:
-        # WALKTHROUGH 5b: resume points the model at a saved checkpoint
         overrides["train_config.checkpoint_path"] = str(output_dir / cfg.resume.from_checkpoint)
 
     p_args = [f"{k}={v}" for k, v in overrides.items()]
