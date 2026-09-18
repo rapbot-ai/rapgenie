@@ -1,0 +1,50 @@
+flowchart TD
+    classDef ours fill:#7a5c00,stroke:#e0b400,color:#fff
+    classDef thirdparty fill:#000000,stroke:#666,color:#fff
+    classDef greenfield fill:#0d5c3f,stroke:#2ecc71,color:#fff
+
+    Internet(("Public Internet")):::thirdparty
+
+    subgraph Box["Lightsail/EC2 box — docker-compose"]
+        Traefik["traefik<br/>reverse proxy + TLS"]:::ours
+        Mobilescripter["mobilescripter<br/>rapbot-mobile Next.js app<br/>UI + all API routes"]:::ours
+        GpuDispatcher["gpu-dispatcher<br/>NEW container<br/>internal only, no traefik route"]:::greenfield
+        GpuAutoscaler["gpu-autoscaler<br/>NEW container<br/>internal only, no traefik route"]:::greenfield
+    end
+
+    subgraph RunPodHosted["RunPod-hosted (not our containers)"]
+        RPServerless["RunPod Serverless<br/>managed autoscaling pool"]:::thirdparty
+        Pod1["Pod #1<br/>always-on GPU"]:::greenfield
+        Pod2["Pod #2<br/>always-on GPU"]:::greenfield
+        PodAPI["RunPod Pod<br/>Management API"]:::thirdparty
+    end
+
+    subgraph Managed["External managed services"]
+        RDS["AWS RDS<br/>Postgres — pg-boss table"]:::thirdparty
+        RedisCloud["Redis Cloud"]:::thirdparty
+        Pusher["Pusher"]:::thirdparty
+        S3["S3<br/>audio output storage"]:::thirdparty
+    end
+
+    Internet -- "HTTPS" --> Traefik
+    Traefik -- "routes by Host header" --> Mobilescripter
+
+    Mobilescripter -- "internal docker network" --> GpuDispatcher
+    Mobilescripter -- "POST /run" --> RPServerless
+    Mobilescripter -- "reads/writes" --> RDS
+    Mobilescripter -- "reads/writes" --> RedisCloud
+    Mobilescripter -- "trigger job-event" --> Pusher
+
+    GpuDispatcher -- "queue table" --> RDS
+    GpuDispatcher -- "assign job" --> Pod1
+    GpuDispatcher -- "assign job" --> Pod2
+    GpuDispatcher -- "trigger on completion" --> Pusher
+
+    GpuAutoscaler -- "internal docker network<br/>poll GET /metrics" --> GpuDispatcher
+    GpuAutoscaler -- "scale up/down" --> PodAPI
+    PodAPI -- "create/terminate" --> Pod1
+    PodAPI -- "create/terminate" --> Pod2
+
+    RPServerless -- "webhook on completion" --> Mobilescripter
+    Pod1 -- "upload wav" --> S3
+    Pod2 -- "upload wav" --> S3

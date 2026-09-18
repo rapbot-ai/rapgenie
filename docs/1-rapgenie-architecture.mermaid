@@ -1,0 +1,62 @@
+flowchart TD
+    classDef ours fill:#7a5c00,stroke:#e0b400,color:#fff
+    classDef thirdparty fill:#000000,stroke:#666,color:#fff
+    classDef greenfield fill:#0d5c3f,stroke:#2ecc71,color:#fff
+
+    subgraph Client["rapbot-mobile"]
+        UI["rapgenie.js<br/>RapGenie UI"]:::ours
+    end
+
+    subgraph Existing["Existing path — RunPod Serverless"]
+        InferAPI["/api/rapgenie/infer.js<br/>submit job"]:::ours
+        WebhookAPI["/api/rapgenie/infer/webhook.js"]:::ours
+        StatusAPI["/api/rapgenie/infer/status/[jobId].js"]:::ours
+        RPServerless["RunPod Serverless<br/>managed autoscaling pool"]:::thirdparty
+        Handler1["handler.py (RADTTS)<br/>runs on ephemeral worker"]:::ours
+    end
+
+    subgraph NewPath["New path — Manual GPU pool"]
+        InferManualAPI["/api/rapgenie/infer-manual.js"]:::greenfield
+        Dispatcher["GPU Dispatcher<br/>routes jobs + exposes /metrics<br/>own always-on process"]:::greenfield
+        Registry["Worker Registry<br/>in-memory, health-checked"]:::greenfield
+        Queue["pg-boss queue<br/>waiting room"]:::greenfield
+        PodAPI["RunPod Pod<br/>Management API"]:::thirdparty
+        Pod1["Pod #1 (always-on GPU)"]:::greenfield
+        Pod2["Pod #2 (always-on GPU)"]:::greenfield
+        Handler2["Same handler.py<br/>deployed as plain HTTP server"]:::ours
+    end
+
+    subgraph AutoScalerProc["Auto-Scaler — separate process (stretch)"]
+        AutoScaler["Auto-Scaler<br/>own container, own loop"]:::greenfield
+    end
+
+    subgraph Shared["Shared infra"]
+        Pusher["Pusher<br/>push channel per job"]:::thirdparty
+        S3["S3<br/>audio output storage"]:::thirdparty
+    end
+
+    UI -- "path: serverless" --> InferAPI
+    InferAPI -- "POST /run" --> RPServerless
+    RPServerless -- "dispatches to worker" --> Handler1
+    RPServerless -- "webhook on completion" --> WebhookAPI
+    WebhookAPI -- "trigger job-event" --> Pusher
+    UI -- "check now / poll fallback" --> StatusAPI
+    StatusAPI -- "GET /status" --> RPServerless
+
+    UI -- "path: manual pool" --> InferManualAPI
+    InferManualAPI -- "submit job" --> Dispatcher
+    Dispatcher -- "check availability" --> Registry
+    Dispatcher -- "all workers busy" --> Queue
+    Dispatcher -- "assign job" --> Pod1
+    Dispatcher -- "assign job" --> Pod2
+    Pod1 -- "runs inference" --> Handler2
+    Pod2 -- "runs inference" --> Handler2
+    Dispatcher -- "trigger on completion" --> Pusher
+    AutoScaler -- "poll GET /metrics" --> Dispatcher
+    AutoScaler -- "scale up/down" --> PodAPI
+    PodAPI -- "create/terminate" --> Pod1
+    PodAPI -- "create/terminate" --> Pod2
+
+    Handler1 -- "upload wav" --> S3
+    Handler2 -- "upload wav" --> S3
+    Pusher -- "push job-event" --> UI
