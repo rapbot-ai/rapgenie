@@ -30,15 +30,23 @@ PREP, before the interview:
 
 ---
 
-## 1. MOTIVATION: Why automate?
+## 1. USE CASE: what rapBot does
 
-- rapBot lets users rap in real rappers' voices
-- Each rapper is its own fine-tuned RADTTS model
-- 133 artists, retrained on bigger datasets, so 1000+ training runs
+- Users rap in their favorite rappers' voices
+- Each voice is a TTS model fine-tuned from Nvidia's RADTTS
+- The voice models are the core value of the product
 
 ---
 
-## 2. PROBLEM: bad reproducibility/auditability
+## 2. MOTIVATION: why automate training
+
+- 133 artists in the catalog, so 133 voice models
+- Every dataset upgrade means retraining all of them
+- That's 1000+ training runs, too many to babysit by hand
+
+---
+
+## 3. PROBLEM: bad reproducibility/auditability
 
 - Hyperparameters typed into a Google Colab notebook
 - Data on a Drive mount that dies with the session
@@ -47,7 +55,7 @@ PREP, before the interview:
 
 ---
 
-## 3. SOLUTION: automated, containerized training jobs
+## 4. SOLUTION: automated, containerized training jobs
 
 - Low maintenance cost: RadTTS is vendored black box
 - Job queues and GPU provisioning (RunPod)
@@ -57,7 +65,7 @@ PREP, before the interview:
 
 ---
 
-## 4. Code Walkthrough
+## 5. Code Walkthrough
 
 | Approach | File | Code |
 | --- | --- | --- |
@@ -69,7 +77,7 @@ PREP, before the interview:
 
 ---
 
-## 5. Future Improvements
+## 6. Future Improvements
 
 1. Warm restart
    - Checkpoint download to the worker isn't built
