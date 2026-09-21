@@ -22,7 +22,7 @@ From a notebook someone babysat to a job we submit
 
 ---
 
-## 1. Why automate?
+## 1. MOTIVATION: Why automate?
 
 - rapBot lets users rap in real rappers' voices
 - Each rapper is its own fine-tuned RADTTS model
@@ -30,7 +30,7 @@ From a notebook someone babysat to a job we submit
 
 ---
 
-## 2. Problem: bad reproducibility/auditability
+## 2. PROBLEM: bad reproducibility/auditability
 
 - Hyperparameters typed into a Google Colab notebook
 - Mounted on ephemeral drive
@@ -39,7 +39,7 @@ From a notebook someone babysat to a job we submit
 
 ---
 
-## 3. Solution: automated & scalable job containers
+## 3. SOLUTION: automated & scalable job containers
 
 - Low maintenance cost: RadTTS is vendored black box
 - Job queues and GPU provisioning (RunPod)
@@ -51,8 +51,13 @@ From a notebook someone babysat to a job we submit
 
 ## 4. Code Walkthrough
 
-- `train.py` --> training job
-- `handler.py` --> entrypoint
+| Approach | File | Code |
+| --- | --- | --- |
+| Vendored black box | `train.py` | 1a-1d |
+| Queued job | `handler.py` | 2a |
+| Metrics to W&B | `train.py` | 3a-3c |
+| RunPod Serverless | `handler.py` | 4a |
+| Checkpoints to S3 | `train.py` | 5a |
 
 ---
 
