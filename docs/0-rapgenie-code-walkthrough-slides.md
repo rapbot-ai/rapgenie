@@ -20,6 +20,14 @@ From a notebook someone babysat to a job we submit
 
 `rapgenie/src/training/train.py`
 
+<!--
+PREP, before the interview:
+1. Warmstart the GPUs 1 hour before.
+2. Generate outputs beforehand.
+3. Make sure always-on servers scale with multiple concurrent jobs.
+4. Log into GitHub, AWS, RunPod, Weights & Biases.
+-->
+
 ---
 
 ## 1. MOTIVATION: Why automate?
@@ -33,18 +41,18 @@ From a notebook someone babysat to a job we submit
 ## 2. PROBLEM: bad reproducibility/auditability
 
 - Hyperparameters typed into a Google Colab notebook
-- Mounted on ephemeral drive
+- Data on a Drive mount that dies with the session
 - No metrics dashboard
 - Unpersisted logs
 
 ---
 
-## 3. SOLUTION: automated & scalable job containers
+## 3. SOLUTION: automated, containerized training jobs
 
 - Low maintenance cost: RadTTS is vendored black box
 - Job queues and GPU provisioning (RunPod)
 - Metrics dashboard (Weights & Biases)
-- Dynamically saved checkpoints (S3)
+- Checkpoints saved as written (S3)
 - Portable container (Docker)
 
 ---
@@ -64,8 +72,8 @@ From a notebook someone babysat to a job we submit
 ## 5. Future Improvements
 
 1. Warm restart
-  - Checkpoint download to the worker isn't built
-  - Then automatic retries, the config already has the setting
+   - Checkpoint download to the worker isn't built
+   - Then automatic retries, the config already has the setting
 2. Log parser
-  - Safe while pinned to one commit
-  - Sturdier source: TensorBoard files the model already writes
+   - Safe while pinned to one commit
+   - Sturdier source: TensorBoard files the model already writes
