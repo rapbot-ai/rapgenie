@@ -2,26 +2,36 @@
 
 rapgenie - `~/src/training/train.py`
 
-I converted an open Nvidia TTS model from a brittle and manual touchpoint-heavy Google Colab interface to an automated, scalable container running in a serverless cloud environment with visibility in Weights & Biases.
+I converted an open Nvidia TTS model from a brittle and manual touchpoint-heavy Google Colab interface to a scalable container running in a serverless cloud environment with visibility in Weights & Biases.
 
-## PreP:
+## Prep:
 
-1. Warmstart the GPUs
-2. Have prepared outputs at martinconnor.com/rapgenie
+1. Warmstart the GPUs 1 hour before.
+2. Generate outputs beforehand.
+3. Make sure that always on servers scale with multiple concurrent jobs.
+4. Log into github/aws/runpod/weights and biases.
 
 ## 1. Use Case
 
-rapBot lets users rap in their favorite rappers' voices using TTS models fine-tuned from Nvidia's open-source RADTTS. We automated model training because:
-- each rapper needs a separate voice model
-- those models are the core business value of the platform
+Section 1: why automate
+├── rapBot: users rap in real rappers' voices
+├── each rapper is its own fine-tuned RADTTS model
+└── 133 artists, retrained on bigger datasets, so 1000+ runs
 
 ## 2. Problem
 
-Model training was run by hand in a Google Colab notebook. The data team ran each cell and watched the model's loss. This made it hard to reproduce because hyperparameters were typed into a cell, the model's code was cloned fresh each run, and data sat on a Drive mount that dropped with the Colab session. This was also hard to audit. There was no dashboard for loss metrics and each new run erased the last run's logs.
+Not reproducible & not auditable
+├── not reproducible: hyperparameters typed in a Google Colab notebook, data on a Drive mount that dies with the session
+├── not auditable: no metrics dashboard, each run overwrote the last run's logs
+└── brittle: repo cloned fresh every run, so upstream changes broke us
 
 ## 3. Solution
 
-We treat the open-source model's repo as a vendored black box that we never touch. That saves us from maintaining a custom fork heavily coupled to our tech stack. We automated model training as a queued job around it. Model metrics stream to Weights and Biases. GPUs scale through RunPod Serverless. Checkpoints upload to blob storage as they're written.
+We built an automated, containerized training job
+├── vendored black box: forked repo, pinned deps, archived
+├── RunPod Serverless: job queue and GPU provisioning
+├── W&B: metrics
+└── S3: checkpoints uploaded as written
 
 ## 4. Implementation
 
