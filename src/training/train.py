@@ -1,27 +1,3 @@
-"""Production training entrypoint.
-
-This is what replaces the notebook cell:
-
-    %cd /content/RADTTS
-    !python3 train.py -c configs/config_ljs_dap.json -p train_config.learning_rate=0.0005 ...
-
-It's intentionally a thin wrapper *around* the vendored RADTTS `train.py`
-rather than a rewrite of it — you don't fork and modify a third-party
-research repo's training loop; you control it from the outside through
-config, environment, and process boundaries. What this adds on top:
-
-  1. Validates config and dataset before touching a GPU (fail fast, cheap).
-  2. Resolves all paths through the storage abstraction instead of assuming
-     Google Drive is mounted at a fixed path.
-  3. Sets up structured logging + W&B, tagged with the run_id (name + config
-     hash + git commit) so every run is traceable back to what produced it.
-  4. Handles resume explicitly as a per-job value passed in from the outside.
-  5. Uploads checkpoints to blob storage as they're written, instead of
-     relying on Drive-mount durability.
-  6. Exits with a non-zero code and a clear message on failure, so it behaves
-     correctly under a Kubernetes Job's restart policy.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -43,13 +19,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("radtts_train")
 
-RADTTS_REPO = Path("/opt/RADTTS")  # baked into the Docker image, not git-cloned at runtime
+# WALKTHROUGH 1a: the model's repo is baked into the Docker image
+RADTTS_REPO = Path("/opt/RADTTS")
 
 
 def resolve_dataset(cfg: PipelineConfig, local_data_dir: Path) -> None:
-    """Pull the aligned dataset down from blob storage to local disk for
-    training, then validate it. Mirrors what Drive-mounting gave you for
-    free, but explicit and backend-agnostic."""
     store = build_blob_store(cfg.storage.backend, cfg.storage.bucket)
     local_data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -81,14 +55,6 @@ def resolve_warmstart_checkpoint(cfg: PipelineConfig, local_ckpt_dir: Path) -> P
 
 
 def resolve_vocoder(cfg: PipelineConfig, local_ckpt_dir: Path) -> tuple[Path, Path]:
-    """Download the HiFi-GAN vocoder checkpoint + config used to synthesize
-    audio for validation-time logging (compute_validation_loss -> load_vocoder
-    in the vendored train.py/inference.py). RADTTS's bundled config_ljs_dap.json
-    points at 'models/hifigan_config_22khz.json' and 'models/hifigan_ljs_generator_v1'
-    by default — files that ship with nobody's checkout, same category as the
-    warmstart checkpoint. StorageConfig already had vocoder_checkpoint/
-    vocoder_config fields (and train.yaml already sets them); this was just
-    never wired up to actually download them and override the paths."""
     store = build_blob_store(cfg.storage.backend, cfg.storage.bucket)
     local_ckpt = local_ckpt_dir / "vocoder.pt"
     local_config = local_ckpt_dir / "vocoder_config.json"
@@ -109,10 +75,6 @@ def build_train_command(
     vocoder_config: Path,
     vocoder_ckpt: Path,
 ) -> list[str]:
-    """Translate the typed config into RADTTS's expected `-p key=value`
-    overrides. This is the *only* place in the whole pipeline that speaks
-    RADTTS's flat CLI dialect — everywhere else in this codebase deals with
-    the structured PipelineConfig."""
     overrides = {
         "train_config.learning_rate": cfg.train.learning_rate,
         "train_config.epochs": cfg.train.epochs,
@@ -126,19 +88,10 @@ def build_train_command(
         "train_config.output_directory": str(output_dir),
         "train_config.warmstart_checkpoint_path": str(warmstart_ckpt),
         "model_config.n_speakers": cfg.raw["model"]["n_speakers"],
-        # RADTTS's own bundled config_ljs_dap.json points these at its demo
-        # filelist ('filelists/ljs_audiopath_text_speaker_train_filelist.txt'),
-        # which doesn't exist in this image. Point it at what
-        # resolve_dataset() actually downloaded instead. audiodir is left
-        # alone — it's already "wavs", matching the folder name we download
-        # into.
         "data_config.training_files.LJS.basedir": f"{local_data_dir}/",
         "data_config.training_files.LJS.filelist": "training.txt",
         "data_config.validation_files.LJS.basedir": f"{local_data_dir}/",
         "data_config.validation_files.LJS.filelist": "validation.txt",
-        # Same story as data_config above: RADTTS's bundled default
-        # ('models/hifigan_config_22khz.json', 'models/hifigan_ljs_generator_v1')
-        # isn't in this image. Point at what resolve_vocoder() downloaded.
         "train_config.vocoder_config_path": str(vocoder_config),
         "train_config.vocoder_checkpoint_path": str(vocoder_ckpt),
     }
@@ -148,6 +101,7 @@ def build_train_command(
     p_args = [f"{k}={v}" for k, v in overrides.items()]
     return [
         "python3",
+        # WALKTHROUGH 1b: we call the model's own training script
         str(RADTTS_REPO / "train.py"),
         "-c",
         str(RADTTS_REPO / "configs" / "config_ljs_dap.json"),
@@ -160,19 +114,6 @@ _TRAIN_ITER_RE = re.compile(r"^iter:\s*(\d+)\s*\(")
 
 
 def _parse_train_line(line: str) -> tuple[int, dict[str, float]] | None:
-    """Parses one of RADTTS's own per-iteration stdout lines, e.g.:
-
-        iter: 114  (0.79 s)  |  lr: 0.0005  |  loss_mel: -1.458  |  loss_prior: 0.023
-
-    into (114, {"lr": 0.0005, "loss_mel": -1.458, "loss_prior": 0.023}).
-    Returns None for anything that isn't one of these lines (dataset-loading
-    messages, "Epoch: N", validation output, etc.) — those aren't per-step
-    metrics and don't get logged.
-
-    Reads the vendored fork's print format (train.py, ~line 426:
-    `print_list = ["iter: {} ({:.2f} s) | lr: {}"...]`, one `| key: value`
-    appended per loss component) without touching that file — same
-    control-from-the-outside approach as the rest of this pipeline."""
     segments = [s.strip() for s in line.split("|")]
     match = _TRAIN_ITER_RE.match(segments[0])
     if not match:
@@ -187,7 +128,7 @@ def _parse_train_line(line: str) -> tuple[int, dict[str, float]] | None:
         try:
             metrics[key.strip()] = float(value.strip())
         except ValueError:
-            continue  # not a numeric "key: value" segment — skip, don't crash the run over a log line
+            continue
     return iteration, metrics
 
 
@@ -196,23 +137,6 @@ _VAL_LOSS_ENTRY_RE = re.compile(r"'([^']+)':\s*(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?
 
 
 def _parse_val_line(line: str) -> dict[str, float] | None:
-    """Parses RADTTS's validation-loss print line, e.g.:
-
-        Validation loss: {'loss_mel': -1.458, 'loss_prior': 0.023}
-
-    into {"loss_mel": -1.458, "loss_prior": 0.023}. This was the actual bug:
-    _parse_train_line only ever matched "iter: N (...)" lines, so this line
-    (train.py ~line 449: `print('Validation loss:', val_loss_outputs)`,
-    printed only every iters_per_checkpoint iterations) never matched
-    anything and validation metrics silently never reached W&B — they were
-    always going to TensorBoard fine (train.py ~line 232:
-    `logger.add_scalar('val/'+k, ...)`, a separate code path this wrapper
-    doesn't touch), which is why nobody noticed from the training logs
-    themselves.
-
-    It's a Python dict repr (single-quoted keys), not JSON, so this can't
-    just json.loads() it — regex-extract 'key': value pairs instead of
-    eval()'ing arbitrary printed text."""
     match = _VAL_LOSS_RE.match(line)
     if not match:
         return None
@@ -231,52 +155,24 @@ def _run_training_subprocess(
     wandb_enabled: bool,
     early_stopping: EarlyStoppingConfig | None = None,
 ) -> int:
-    """Runs the RADTTS training subprocess, streaming its stdout back out
-    exactly as `subprocess.run(cmd, cwd=cwd)` (inherited stdio) did before —
-    RunPod's Logs tab looks identical — while also parsing each
-    per-iteration metrics line RADTTS already prints and forwarding it to
-    W&B when enabled. Never touches vendored RADTTS source; this only reads
-    what it already writes to stdout.
-
-    Early stopping rides the same stdout parsing: when the monitored key on
-    RADTTS's 'Validation loss:' line hasn't improved in patience_steps
-    steps (and we're past min_steps), the subprocess is terminated and this
-    returns 0 — a deliberate stop is a SUCCESSFUL run, not a failure, so it
-    must not look like a crash to retry logic or wandb.finish(exit_code=).
-    Killing mid-iteration is safe: the checkpoint watcher has already
-    uploaded every checkpoint written so far (including the best one), and
-    the at-most-<iters_per_checkpoint iterations lost past the last
-    checkpoint are all past-peak by definition. Motivating data: the v5 run
-    bottomed every val loss by step 600 and burned 10k more steps anyway.
-
-    stderr is merged into stdout (rather than kept as a second inherited
-    stream) so there's one ordered pipe to read — the tradeoff is that
-    stdout/stderr interleaving is no longer guaranteed byte-for-byte in
-    original OS ordering, which doesn't matter for a training log."""
     if wandb_enabled:
         import wandb
 
     es = early_stopping if (early_stopping is not None and early_stopping.enabled) else None
 
+    # WALKTHROUGH 1c: we start it as a subprocess
     proc = subprocess.Popen(
         cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
     )
     assert proc.stdout is not None
-    # Validation-loss lines don't carry their own iteration number (see
-    # _parse_val_line) — RADTTS always prints them immediately after that
-    # iteration's "iter: N (...)" line, in the same loop pass, before moving
-    # on, so the last iteration seen from _parse_train_line is always the
-    # right step to attribute them to.
     last_iteration: int | None = None
     best_value: float | None = None
     best_step: int | None = None
     early_stopped = False
+    # WALKTHROUGH 1d: we only read its output
     for line in proc.stdout:
         line = line.rstrip("\n")
         print(line, flush=True)
-        # Parsing used to be skipped entirely when W&B was off; early
-        # stopping needs it regardless, so the W&B guard now sits on the
-        # log calls instead of the parse.
         if not wandb_enabled and es is None:
             continue
         parsed = _parse_train_line(line)
@@ -284,20 +180,22 @@ def _run_training_subprocess(
             iteration, metrics = parsed
             last_iteration = iteration
             if wandb_enabled:
+                # WALKTHROUGH 3b: send train loss
                 wandb.log({f"train/{k}": v for k, v in metrics.items()}, step=iteration)
             continue
         val_metrics = _parse_val_line(line)
         if val_metrics:
             if last_iteration is None:
-                continue  # shouldn't happen (validation always follows an iter line) but don't crash the run over a log-parsing edge case
+                continue
             if wandb_enabled:
+                # WALKTHROUGH 3c: send validation loss
                 wandb.log({f"val/{k}": v for k, v in val_metrics.items()}, step=last_iteration)
             if es is None:
                 continue
             value = val_metrics.get(es.monitor)
             if value is None:
-                continue  # monitored key absent from this val line — config typo or RADTTS change; don't stop a run over it
-            if best_value is None or value < best_value:  # lower is better: everything on this line is a loss
+                continue
+            if best_value is None or value < best_value:
                 best_value, best_step = value, last_iteration
             elif last_iteration - best_step >= es.patience_steps and last_iteration >= es.min_steps:
                 early_stopped = True
@@ -307,7 +205,7 @@ def _run_training_subprocess(
                     f"(best {best_value:.4f} at step {best_step}; patience {es.patience_steps})"
                 )
                 logger.info(msg)
-                print(msg, flush=True)  # also into the RunPod log stream, next to RADTTS's own output
+                print(msg, flush=True)
                 if wandb_enabled:
                     wandb.run.summary["early_stop/triggered"] = True
                     wandb.run.summary["early_stop/step"] = last_iteration
@@ -317,10 +215,6 @@ def _run_training_subprocess(
                 break
 
     if early_stopped:
-        # SIGTERM first; if RADTTS doesn't die within the grace period
-        # (e.g. wedged in a CUDA call), escalate. Either way this is a
-        # deliberate, successful outcome — return 0, not the subprocess's
-        # signal-death code.
         try:
             proc.wait(timeout=60)
         except subprocess.TimeoutExpired:
@@ -335,26 +229,6 @@ def _run_training_subprocess(
 def _watch_and_offload_checkpoints(
     cfg: PipelineConfig, output_dir: Path, stop_event: threading.Event, poll_interval: float = 15.0
 ) -> None:
-    """Runs in a background thread for the lifetime of the RADTTS training
-    subprocess. Uploads each new checkpoint to blob storage and deletes it
-    locally as soon as it appears, instead of leaving everything on disk
-    until the whole run finishes.
-
-    RADTTS's own save_checkpoint() never rotates or deletes old checkpoints
-    — every iters_per_checkpoint iterations it writes a brand new model_<N>
-    file and keeps every previous one forever. On a fixed-size container
-    disk that grows without bound and eventually fails mid-write (exactly
-    what happened: torch.save's PytorchStreamWriter died with a byte-count
-    mismatch after the 4th checkpoint filled the disk). Uploading-then-
-    deleting each checkpoint as it's written keeps local disk usage roughly
-    constant no matter how long training runs, without touching vendored
-    RADTTS source — this thread just watches the output directory from
-    the outside.
-
-    torch.save() isn't atomic (no write-to-temp-then-rename), so a
-    checkpoint file can be mid-write when this thread notices it. Skip any
-    file whose size hasn't stabilized across a short gap; pick it up on the
-    next poll instead of risking an upload of a truncated checkpoint."""
     store = build_blob_store(cfg.storage.backend, cfg.storage.bucket)
     uploaded: set[str] = set()
 
@@ -367,27 +241,23 @@ def _watch_and_offload_checkpoints(
                 time.sleep(1)
                 size_after = ckpt.stat().st_size
             except FileNotFoundError:
-                continue  # vanished between glob() and stat() — skip, not ours to worry about
+                continue
             if size_before != size_after:
-                continue  # still being written; catch it on the next sweep
+                continue
 
             remote = f"{cfg.storage.checkpoint_prefix}/{cfg.run_id}/{ckpt.name}"
             logger.info("uploading checkpoint %s -> %s (then deleting local copy)", ckpt, remote)
+            # WALKTHROUGH 5a: upload each checkpoint as it's written
             store.upload(ckpt, remote)
             ckpt.unlink()
             uploaded.add(ckpt.name)
 
     while not stop_event.wait(poll_interval):
         _sweep()
-    _sweep()  # final sweep once the subprocess has exited, to catch the last checkpoint written
+    _sweep()
 
 
 def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
-    # `resume` is passed straight into load_config() as its one and only
-    # source — never read from config_path's YAML, never applied as a
-    # second, later override on top of it. See config.py's load_config()
-    # docstring for why: two places that could each supply a resume value
-    # is exactly what we're avoiding here, even if they'd usually agree.
     try:
         cfg = load_config(config_path, resume=resume)
     except ConfigError as e:
@@ -414,17 +284,6 @@ def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
     cmd = build_train_command(cfg, warmstart_ckpt, local_ckpt_dir, local_data_dir, vocoder_config, vocoder_ckpt)
     logger.info("launching: %s", " ".join(cmd))
 
-    # RADTTS's bundled config_ljs_dap.json is full of paths relative to the
-    # RADTTS repo itself — heteronyms_path, phoneme_dict_path,
-    # vocoder_config_path, vocoder_checkpoint_path, betabinom_cache_path,
-    # etc. That's not an oversight: the original notebook did `%cd
-    # /content/RADTTS` before invoking train.py, so those paths always
-    # resolved relative to the repo root. Our subprocess otherwise inherits
-    # this process's cwd (/app, per the Dockerfile's WORKDIR), so without
-    # this, each relative path fails FileNotFoundError one at a time as
-    # training progresses further. Setting cwd here reproduces the
-    # notebook's %cd — the paths WE override above (checkpoints, warmstart,
-    # local_data_dir) are all absolute, so this doesn't affect them.
     stop_watcher = threading.Event()
     watcher = threading.Thread(
         target=_watch_and_offload_checkpoints,
@@ -433,11 +292,6 @@ def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
     )
     watcher.start()
 
-    # Default of 1 (failure) covers the case where _run_training_subprocess
-    # itself raises before returning a real code — wandb.finish() below still
-    # needs *some* exit_code, and "silently look like success" is the wrong
-    # default for "something went wrong we didn't even get a return code
-    # from."
     returncode = 1
     try:
         returncode = _run_training_subprocess(
@@ -448,7 +302,7 @@ def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
         )
     finally:
         stop_watcher.set()
-        watcher.join(timeout=120)  # give the final sweep time to upload whatever's left
+        watcher.join(timeout=120)
         if cfg.wandb.enabled:
             import wandb
 
@@ -462,23 +316,11 @@ def run(config_path: Path, resume: ResumeConfig | None = None) -> int:
 def _init_wandb(cfg: PipelineConfig) -> None:
     import wandb
 
+    # WALKTHROUGH 3a: start the W&B run
     wandb.init(
         project=cfg.wandb.project,
-        # id=cfg.run_id (not just name=) is what makes a resumed job
-        # continue the SAME W&B run instead of silently creating a second,
-        # disconnected one under the same display name — name alone isn't
-        # unique across separate wandb.init() calls, id is. run_id is
-        # already the one identity for a run everywhere else in this
-        # codebase (checkpoint S3 prefix, logging), so this reuses it rather
-        # than inventing a second identifier.
         id=cfg.run_id,
         name=cfg.run_id,
-        # "allow" only when actually resuming. cfg.run_id is now unique per
-        # fresh launch (see PipelineConfig.instance_id), so a fresh run
-        # colliding with an existing id should be effectively impossible —
-        # but if it somehow did happen, "never" makes W&B fail loudly instead
-        # of silently splicing this run's logs into an unrelated one's
-        # history, which is the exact bug this whole change exists to kill.
         resume="allow" if cfg.resume.enabled else "never",
         tags=cfg.wandb.tags,
         config=cfg.raw,
