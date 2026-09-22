@@ -27,6 +27,7 @@ Do these before the interview:
 2. Generate outputs beforehand.
 3. Make sure always-on servers scale with multiple concurrent jobs.
 4. Log into GitHub, AWS, RunPod, Weights & Biases, App Store Connect, Android Store
+5. Open rapgenie and rapbot-mobile repos in VSCode
 -->
 
 ---
@@ -62,14 +63,15 @@ SOURCES:
 
 ## PROBLEM: bad reproducibility/auditability
 
+- Notebook cloned RADTTS fresh each run: unpinned, any upstream change could break training
 - Hyperparameters typed into a Google Colab notebook
-- Data on a Drive mount that dies with the session
+- One GPU, one run at a time
 - No metrics dashboard
-- Unpersisted logs
+- Checkpoints and logs on a Drive mount that dies with the session
 
 <!--
 SOURCES:
-- Colab notebook: https://colab.research.google.com/drive/159klw_hkpt5imC80Tkoi752G_XNZdNe7#scrollTo=My8jR5wx7abv
+- Fixed colab notebook: https://colab.research.google.com/drive/159klw_hkpt5imC80Tkoi752G_XNZdNe7#scrollTo=My8jR5wx7abv
 - Upstream RADTTS PR #35: https://github.com/NVIDIA/radtts/pull/35
 - My fix for Google Colab notebook: https://github.com/NVIDIA/radtts/issues/16
 - Upstream issues I commented on: https://github.com/NVIDIA/radtts/issues?q=commenter%3A%40me
@@ -96,26 +98,9 @@ SOURCES:
 
 ---
 
-## DEMO
-
-1. Send training job via `/POST`
-- POSTman
-2. Check queue/logs/metrics
-- RunPod, Weights & Biases
-3. Create checkpoint
-- S3
-
-<!--
-SOURCES:
-- Postman collection (training endpoint)
-- RunPod: https://console.runpod.io/pods
-- W&B: https://wandb.ai/rapbot-ai/radtts-voice-clone/table
-- S3: https://us-east-1.console.aws.amazon.com/s3/buckets/martinconnor-radtts-training-artifacts?region=us-east-1
--->
-
----
-
 ## Code Walkthrough
+
+*▶ Submit training job now*
 
 | Approach | File | Code |
 | --- | --- | --- |
@@ -124,6 +109,25 @@ SOURCES:
 | Metrics to W&B | `train.py` | 3a-3c |
 | RunPod Serverless | `handler.py` | 4a |
 | Checkpoints to S3 | `train.py` | 5a |
+
+---
+
+## DEMO
+
+1. Send training job via `POST /run`
+   - Postman
+2. Check queue/logs/metrics
+   - RunPod, Weights & Biases
+3. Create checkpoint
+   - S3
+
+<!--
+SOURCES:
+- Postman collection (training endpoint)
+- RunPod: https://console.runpod.io/pods
+- W&B: https://wandb.ai/rapbot-ai/radtts-voice-clone/table
+- S3: https://us-east-1.console.aws.amazon.com/s3/buckets/martinconnor-radtts-training-artifacts?region=us-east-1
+-->
 
 ---
 
