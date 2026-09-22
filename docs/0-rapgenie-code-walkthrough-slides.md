@@ -32,6 +32,19 @@ Do these before the interview:
 
 ---
 
+# Walkthrough Structure
+
+1. Business use case
+2. Motivation (why automate?)
+3. Technical problem
+4. Technical solution
+5. Code Walkthrough
+6. App demo
+7. Future state
+8. Wrap-up
+
+---
+
 ## USE CASE: what rapBot does
 
 - Users write lyrics that get synthesized via rappers' voices
@@ -112,7 +125,7 @@ SOURCES:
 
 ---
 
-## DEMO
+## App Demo
 
 1. Send training job via `POST /run`
    - Postman
@@ -131,7 +144,7 @@ SOURCES:
 
 ---
 
-## Future Improvements
+## Future State
 
 1. Warm restart
    - Checkpoint download to the worker isn't built
@@ -144,4 +157,5 @@ SOURCES:
 
 ## Wrap-Up
 
-Questions/comments?
+- martinconnor.com/rapgenie
+- Questions/comments?
