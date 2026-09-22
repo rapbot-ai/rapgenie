@@ -55,7 +55,7 @@ Do these before the interview:
 SOURCES:
 - Apple App Store: https://appstoreconnect.apple.com/apps/1553540835/distribution/info
 - Google Play: https://play.google.com/console/u/0/developers/7015808534271269202/app/4973394726403743674/app-dashboard
-- martinconnor.com/rapgenie
+- https://martinconnor.com/rapgenie
 -->
 
 ---
