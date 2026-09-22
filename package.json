@@ -17,6 +17,7 @@
     "kill:infer-job": "node src/runpod/scripts/kill_job.js --endpoint infer",
     "submit:train-job": "node src/runpod/model-training/scripts/submit_training_job.js",
     "submit:infer-job": "node src/runpod/inference/scripts/submit_inference_job.js",
+    "submit:infer-job-example": "npm run submit:infer-job -- \"let's go\" --checkpoint checkpoints/lupefiasco-radtts-warmstart-v5/lupefiasco-radtts-warmstart-v5-ce93c5cc8fda-0b0fb6e-6b2a24a8/model_200",
     "wandb:history": "node src/training/scripts/download_run_history.js"
   },
   "author": "",
