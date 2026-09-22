@@ -123,7 +123,7 @@ SOURCES:
 
 <!--
 SOURCES:
-- Postman collection (training endpoint)
+- POSTman: /train cURL
 - RunPod: https://console.runpod.io/pods
 - W&B: https://wandb.ai/rapbot-ai/radtts-voice-clone/table
 - S3: https://us-east-1.console.aws.amazon.com/s3/buckets/martinconnor-radtts-training-artifacts?region=us-east-1
