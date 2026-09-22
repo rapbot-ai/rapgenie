@@ -21,7 +21,8 @@ Google Colab notebook → containerized serverless training
 `~/src/training/train.py`
 
 <!--
-PREP, before the interview:
+## PREP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Do these before the interview:
 1. Warmstart the GPUs 1 hour before.
 2. Generate outputs beforehand.
 3. Make sure always-on servers scale with multiple concurrent jobs.
@@ -30,7 +31,7 @@ PREP, before the interview:
 
 ---
 
-## 1. USE CASE: what rapBot does
+## USE CASE: what rapBot does
 
 - Users write lyrics that get synthesized via rappers' voices
 - Each voice is a TTS model fine-tuned from Nvidia's RADTTS
@@ -45,7 +46,7 @@ SOURCES:
 
 ---
 
-## 2. MOTIVATION: why automate training?
+## MOTIVATION: why automate training?
 
 - 133 artists in the catalog → 133 voice models
 - Every dataset upgrade means retraining all of them
@@ -59,7 +60,7 @@ SOURCES:
 
 ---
 
-## 3. PROBLEM: bad reproducibility/auditability
+## PROBLEM: bad reproducibility/auditability
 
 - Hyperparameters typed into a Google Colab notebook
 - Data on a Drive mount that dies with the session
@@ -70,18 +71,19 @@ SOURCES:
 SOURCES:
 - Colab notebook: https://colab.research.google.com/drive/159klw_hkpt5imC80Tkoi752G_XNZdNe7#scrollTo=My8jR5wx7abv
 - Upstream RADTTS PR #35: https://github.com/NVIDIA/radtts/pull/35
+- My fix for Google Colab notebook: https://github.com/NVIDIA/radtts/issues/16
 - Upstream issues I commented on: https://github.com/NVIDIA/radtts/issues?q=commenter%3A%40me
-- Fork: https://github.com/rapbot-ai/radtts
+- Our RadTTS Fork: https://github.com/rapbot-ai/radtts
 -->
 
 ---
 
-## 4. SOLUTION: automated, containerized training jobs
+## SOLUTION: automated, containerized training jobs
 
 - **Maintainable:** RADTTS is a vendored black box
-- **Scalable:** job queue and GPU provisioning via RunPod Serverless
+- **Scalable:** job queue and GPU provisioning via RunPod
 - **Visible:** metrics dashboard via Weights & Biases
-- **Durable:** checkpoints saved to S3 as they're written
+- **Durable:** checkpoints saved to S3 as they're created
 - **Portable:** containerized via Docker
 
 <!--
@@ -94,7 +96,26 @@ SOURCES:
 
 ---
 
-## 5. Code Walkthrough
+## DEMO
+
+1. Send training job via `/POST`
+- POSTman
+2. Check queue/logs/metrics
+- RunPod, Weights & Biases
+3. Create checkpoint
+- S3
+
+<!--
+SOURCES:
+- Postman collection (training endpoint)
+- RunPod: https://console.runpod.io/pods
+- W&B: https://wandb.ai/rapbot-ai/radtts-voice-clone/table
+- S3: https://us-east-1.console.aws.amazon.com/s3/buckets/martinconnor-radtts-training-artifacts?region=us-east-1
+-->
+
+---
+
+## Code Walkthrough
 
 | Approach | File | Code |
 | --- | --- | --- |
@@ -106,7 +127,7 @@ SOURCES:
 
 ---
 
-## 6. Future Improvements
+## Future Improvements
 
 1. Warm restart
    - Checkpoint download to the worker isn't built
@@ -114,3 +135,9 @@ SOURCES:
 2. Log parser
    - Safe while pinned to one commit
    - Sturdier source: TensorBoard files the model already writes
+
+---
+
+## Wrap-Up
+
+Questions/comments?
