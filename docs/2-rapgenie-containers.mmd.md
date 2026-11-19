@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     classDef ours fill:#7a5c00,stroke:#e0b400,color:#fff
     classDef thirdparty fill:#000000,stroke:#666,color:#fff
@@ -48,3 +49,4 @@ flowchart TD
     RPServerless -- "webhook on completion" --> Mobilescripter
     Pod1 -- "upload wav" --> S3
     Pod2 -- "upload wav" --> S3
+```

@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     classDef ours fill:#7a5c00,stroke:#e0b400,color:#fff
     classDef thirdparty fill:#000000,stroke:#666,color:#fff
@@ -60,3 +61,4 @@ flowchart TD
     Handler1 -- "upload wav" --> S3
     Handler2 -- "upload wav" --> S3
     Pusher -- "push job-event" --> UI
+```
