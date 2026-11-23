@@ -247,7 +247,6 @@ def _watch_and_offload_checkpoints(
 
             remote = f"{cfg.storage.checkpoint_prefix}/{cfg.run_id}/{ckpt.name}"
             logger.info("uploading checkpoint %s -> %s (then deleting local copy)", ckpt, remote)
-            # WALKTHROUGH 5a: upload each checkpoint as it's written
             store.upload(ckpt, remote)
             ckpt.unlink()
             uploaded.add(ckpt.name)

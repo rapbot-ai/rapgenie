@@ -96,10 +96,9 @@ SOURCES:
 ## SOLUTION: automated, containerized training jobs
 
 - **Maintainable:** RADTTS is a vendored black box
-- **Scalable:** job queue and GPU provisioning via RunPod
 - **Visible:** metrics dashboard via Weights & Biases
-- **Durable:** checkpoints saved to S3 as they're created
 - **Portable:** containerized via Docker
+- **Scalable:** job queue and GPU provisioning via RunPod
 
 <!--
 SOURCES:
@@ -121,7 +120,6 @@ SOURCES:
 | Queued job | `handler.py` | 2a |
 | Metrics to W&B | `train.py` | 3a-3c |
 | RunPod Serverless | `handler.py` | 4a |
-| Checkpoints to S3 | `train.py` | 5a |
 
 ---
 
