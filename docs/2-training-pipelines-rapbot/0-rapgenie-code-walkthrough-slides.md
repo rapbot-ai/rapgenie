@@ -142,14 +142,9 @@ SOURCES:
 
 ---
 
-## Future State
+## Future Optimizations
 
-1. Warm restart
-   - Checkpoint download to the worker isn't built
-   - Then automatic retries, the config already has the setting
-2. Log parser
-   - Safe while pinned to one commit
-   - Sturdier source: TensorBoard files the model already writes
+- Warm restarts from intermediate checkpoints
 
 ---
 
